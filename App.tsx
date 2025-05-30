@@ -6,7 +6,7 @@ import { Header } from './components/Header';
 import { IdeaForm } from './components/IdeaForm';
 import { IdeaSection } from './components/IdeaSection';
 import { FlashMessageDisplay } from './components/FlashMessageDisplay';
-import { generateIdeasWithGemini, generateVideoScriptAndInstructions, expandIdeaIntoRelatedIdeas, generateKeywordsWithGemini, generateTitleSuggestionsWithGemini } from './services/geminiService';
+import { generateIdeasWithGemini, generateVideoScriptAndInstructions, expandIdeaIntoRelatedIdeas, generateKeywordsWithGemini, generateTitleSuggestionsWithGemini, analyzeYouTubeCompetitorsForAngles } from './services/geminiService';
 import { getAllIdeas, saveAllIdeas, getLastActiveProfile, saveLastActiveProfile, getAllProfiles, saveAllProfiles } from './services/localStorageService';
 import { LoadingSpinner } from './components/ui/LoadingSpinner';
 import { ScriptViewerModal } from './components/ScriptViewerModal';
@@ -136,7 +136,7 @@ const App: React.FC = () => {
       const { ideas: generatedIdeasWithRationale, strategicGuidance } = await generateIdeasWithGemini(userQuery, niche, appSoftware, contextualNicheLabels);
       
       if (strategicGuidance) {
-        setProactiveRecommendations(strategicGuidance); // Corrected assignment
+        setProactiveRecommendations(strategicGuidance); 
       }
 
       const newIdeas: VideoIdea[] = generatedIdeasWithRationale
@@ -144,14 +144,14 @@ const App: React.FC = () => {
           id: crypto.randomUUID(),
           text: ideaWithRationale.text.trim(),
           aiRationale: ideaWithRationale.aiRationale.trim(),
-          niche: niche || 'AI Suggested', // Niche here will be the clean name from dropdown
+          niche: niche || 'AI Suggested', 
           appSoftware: appSoftware || 'AI Suggested',
           source: 'AI Generated',
           priority: IdeaPriority.LOW,
           status: IdeaStatus.NEW,
           createdAt: new Date().toISOString(),
           lastUpdatedAt: new Date().toISOString(),
-          optimalKeywords: ideaWithRationale.keywords, // Assign initial keywords
+          optimalKeywords: ideaWithRationale.keywords, 
           isScriptLoading: false,
           isExpanding: false,
           isYouTubeLoading: false,
@@ -202,7 +202,7 @@ const App: React.FC = () => {
         idea.id === id ? { ...idea, ...updates, lastUpdatedAt: new Date().toISOString() } : idea
       )
     );
-    const nonFlashUpdateKeys = ['isScriptLoading', 'isExpanding', 'isYouTubeLoading', 'isKeywordsLoading', 'isTitleOptimizing', 'script', 'videoInstructions', 'suggestedResources', 'expandedIdeas', 'youtubeResults', 'optimalKeywords', 'suggestedKeywords', 'keywordSearchGroundingChunks', 'titleSuggestions', 'untappedScore', 'validationSummary', 'lastValidatedAt', 'aiRationale'];
+    const nonFlashUpdateKeys = ['isScriptLoading', 'isExpanding', 'isYouTubeLoading', 'isKeywordsLoading', 'isTitleOptimizing', 'script', 'videoInstructions', 'suggestedResources', 'expandedIdeas', 'youtubeResults', 'optimalKeywords', 'suggestedKeywords', 'keywordSearchGroundingChunks', 'titleSuggestions', 'untappedScore', 'validationSummary', 'lastValidatedAt', 'aiRationale', 'aiCompetitiveAngle'];
     // Only show general update flash if it's not a background AI update AND not a status change (status changes have their own messages)
     if (!Object.keys(updates).some(key => nonFlashUpdateKeys.includes(key)) && !updates.status) {
         addFlashMessage('info', `Idea "${ideas.find(i=>i.id===id)?.text.substring(0,30)}..." updated.`);
@@ -262,14 +262,13 @@ const App: React.FC = () => {
         targetIdea.text,
         targetIdea.niche,
         targetIdea.appSoftware,
-        targetIdea.suggestedKeywords // Using suggestedKeywords, or optimalKeywords if preferred
+        targetIdea.suggestedKeywords 
       );
       const updatedIdeaWithTitles: Partial<VideoIdea> = { 
         titleSuggestions: suggestions,
         isTitleOptimizing: false, 
       };
       handleUpdateIdea(ideaId, updatedIdeaWithTitles);
-      // Fetch the latest state of the idea to update the modal
       const currentIdeaForModal = ideas.find(i => i.id === ideaId);
       if (currentIdeaForModal) {
         setSelectedIdeaForTitleOptimization({ ...currentIdeaForModal, ...updatedIdeaWithTitles, isTitleOptimizing: false });
@@ -312,11 +311,10 @@ const App: React.FC = () => {
         targetIdea.niche,
         targetIdea.appSoftware,
         lengthMinutes,
-        targetIdea.suggestedKeywords || targetIdea.optimalKeywords // Use suggested or optimal keywords
+        targetIdea.suggestedKeywords || targetIdea.optimalKeywords 
       );
       const updatedIdeaWithScript: Partial<VideoIdea> = { script, videoInstructions: instructions, suggestedResources: resources, scriptLengthMinutes: lengthMinutes, isScriptLoading: false };
       handleUpdateIdea(ideaId, updatedIdeaWithScript);
-       // Fetch the latest state of the idea to update the modal
       const currentIdeaForModal = ideas.find(i => i.id === ideaId);
       if (currentIdeaForModal) {
         setSelectedIdeaForScript({ ...currentIdeaForModal, ...updatedIdeaWithScript, isScriptLoading: false });
@@ -349,7 +347,6 @@ const App: React.FC = () => {
     }
     handleUpdateIdea(ideaId, { isExpanding: true });
     try {
-      // expandIdeaIntoRelatedIdeas returns Array<{text: string, keywords: string[]}>
       const relatedIdeaObjects = await expandIdeaIntoRelatedIdeas(
         targetIdea.text,
         targetIdea.niche,
@@ -357,10 +354,10 @@ const App: React.FC = () => {
       );
 
       const newExpandedIdeas: VideoIdea[] = relatedIdeaObjects
-        .map(expandedIdeaObj => ({ // expandedIdeaObj is {text: string, keywords: string[]}
+        .map(expandedIdeaObj => ({ 
           id: crypto.randomUUID(),
           text: expandedIdeaObj.text.trim(),
-          optimalKeywords: expandedIdeaObj.keywords, // Assign expanded keywords to optimalKeywords
+          optimalKeywords: expandedIdeaObj.keywords, 
           niche: targetIdea.niche, 
           appSoftware: targetIdea.appSoftware,
           source: `Expanded from "${targetIdea.text.substring(0,25)}..."`,
@@ -383,7 +380,7 @@ const App: React.FC = () => {
       );
       
       const updatedOriginalIdea: Partial<VideoIdea> = {
-        expandedIdeas: uniqueNewExpandedIdeas.map(i => i.text), // Keep original string array if used
+        expandedIdeas: uniqueNewExpandedIdeas.map(i => i.text), 
         expandedIdeasWithKeywords: uniqueNewExpandedIdeas.map(i => ({ text: i.text, keywords: i.optimalKeywords || [] })),
         isExpanding: false
       };
@@ -410,58 +407,74 @@ const App: React.FC = () => {
   
   const YOUTUBE_VALIDATION_CACHE_DURATION = 60 * 60 * 1000; // 1 hour in milliseconds
 
-  const analyzeYouTubeResults = (results: YouTubeVideoResult[]): { score: UntappedScore; summary: string } => {
+  const analyzeYouTubeResults = (results: YouTubeVideoResult[], ideaText: string): { score: UntappedScore; summary: string } => {
     const count = results.length;
-    let summary = `${count} similar video(s) found. `;
+    let summary = `${count} similar video(s) found by YouTube search. `;
     let score: UntappedScore = 'Not Assessed';
 
     if (count === 0) {
-      summary += "Excellent untapped potential!";
-      score = 'High';
+        summary += "Suggests strong untapped potential based on initial search!";
+        score = 'High';
     } else {
-      const oneYearAgo = new Date();
-      oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-      const sixMonthsAgo = new Date();
-      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+        const oneYearAgo = new Date(); oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+        const sixMonthsAgo = new Date(); sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+        const threeMonthsAgo = new Date(); threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
 
-      const recentVideos = results.filter(v => v.publishedAtDate && v.publishedAtDate > sixMonthsAgo);
-      const veryOldVideos = results.filter(v => v.publishedAtDate && v.publishedAtDate < oneYearAgo);
-      
-      const newestVideo = results.reduce((newest, current) => {
-        if (!current.publishedAtDate) return newest;
-        if (!newest || !newest.publishedAtDate || current.publishedAtDate > newest.publishedAtDate) {
-            return current;
+        const recentVideos = results.filter(v => v.publishedAtDate && v.publishedAtDate > threeMonthsAgo);
+        const moderatelyOldVideos = results.filter(v => v.publishedAtDate && v.publishedAtDate <= sixMonthsAgo && v.publishedAtDate > oneYearAgo);
+        const veryOldVideos = results.filter(v => v.publishedAtDate && v.publishedAtDate <= oneYearAgo);
+        
+        const newestVideo = results.reduce((newest, current) => {
+            if (!current.publishedAtDate) return newest;
+            if (!newest || !newest.publishedAtDate || current.publishedAtDate > newest.publishedAtDate) return current;
+            return newest;
+        }, null as YouTubeVideoResult | null);
+        
+        if (newestVideo?.publishedAtText) {
+            summary += `Newest relevant video is ~${newestVideo.publishedAtText}. `;
         }
-        return newest;
-      }, null as YouTubeVideoResult | null);
-      
-      if (newestVideo?.publishedAtText) {
-        summary += `Newest relevant video is ~${newestVideo.publishedAtText}. `;
-      }
 
-      if (count <= 2) {
-        if (veryOldVideos.length === count) {
-          summary += "Strong untapped potential due to age of existing content.";
-          score = 'High';
-        } else if (recentVideos.length < count) {
-          summary += "Good untapped potential, existing content may not be fresh.";
-          score = 'Medium';
-        } else {
-          summary += "Some competition, but opportunity may exist with a unique angle.";
-          score = 'Medium';
+        // Consider low sub count with high views
+        const highDemandIndicators = results.filter(v => {
+            const subsText = v.channelSubscriberCountText || "0";
+            const viewsText = v.viewCountText || "0";
+            const subs = parseInt(subsText.replace(/\D/g, ''));
+            const views = parseInt(viewsText.replace(/\D/g, ''));
+            if (isNaN(subs) || isNaN(views)) return false;
+            if (subsText.includes('M')) return false; // Ignore massive channels for this specific indicator
+            return subs < 20000 && views > 50000; // Example: <20k subs, >50k views
+        });
+
+        if (highDemandIndicators.length > 0) {
+            summary += `Noteworthy: ${highDemandIndicators.length} video(s) from smaller channels have high views, suggesting strong topic interest! `;
         }
-      } else if (count <= 4) { // "Fewer than 5" includes up to 4
-        if (veryOldVideos.length >= count / 2) {
-          summary += "Medium untapped potential, many existing videos are old.";
-          score = 'Medium';
-        } else {
-          summary += "Moderate competition. Focus on differentiation.";
-          score = 'Low';
+
+        if (count <= 3) { // 0-3 videos
+            if (recentVideos.length === 0 && count > 0) { // Existing videos are not recent
+                summary += "Strong potential due to lack of fresh content."; score = 'High';
+            } else if (highDemandIndicators.length > 0) {
+                summary += "High potential, especially if leveraging insights from successful smaller channels."; score = 'High';
+            } else {
+                summary += "Good potential, limited direct competition."; score = 'Medium';
+            }
+        } else if (count <= 7) { // 4-7 videos
+            if (recentVideos.length <= 1 && veryOldVideos.length >= count / 2) {
+                summary += "Medium potential; opportunity to update older content or find a fresh angle."; score = 'Medium';
+            } else if (highDemandIndicators.length > 0) {
+                 summary += "Medium potential; strong topic interest indicated. Focus on differentiation."; score = 'Medium';
+            } else {
+                summary += "Moderate competition. Differentiation is key."; score = 'Low';
+            }
+        } else { // 8+ videos
+             if (highDemandIndicators.length >= 2) {
+                summary += "Competitive, but clear demand exists. A highly unique or superior quality video is needed."; score = 'Medium';
+             } else if (recentVideos.length < 3 && veryOldVideos.length > count / 2) {
+                summary += "Competitive, but many videos are old. An updated, high-quality version could succeed."; score = 'Low';
+             }
+             else {
+                summary += "Significant competition. Requires a very unique angle or superior quality to stand out."; score = 'Low';
+             }
         }
-      } else {
-        summary += "Significant competition. Requires a very unique angle or superior quality.";
-        score = 'Low';
-      }
     }
     return { score, summary };
   };
@@ -474,37 +487,59 @@ const App: React.FC = () => {
       return;
     }
 
-    // Check cache
-    if (!forceRefresh && targetIdea.youtubeResults && targetIdea.lastValidatedAt) {
+    if (!forceRefresh && targetIdea.youtubeResults && targetIdea.lastValidatedAt && targetIdea.aiCompetitiveAngle) {
       const lastValidationTime = new Date(targetIdea.lastValidatedAt).getTime();
       if (Date.now() - lastValidationTime < YOUTUBE_VALIDATION_CACHE_DURATION) {
-        setSelectedIdeaForYouTube(targetIdea); // Show cached data
+        setSelectedIdeaForYouTube(targetIdea); 
         setShowYouTubeModal(true);
         if(targetIdea.validationSummary) addFlashMessage('info', `Showing cached validation: ${targetIdea.validationSummary}`);
         return;
       }
     }
 
-    handleUpdateIdea(ideaId, { isYouTubeLoading: true, untappedScore: 'Not Assessed' as UntappedScore, validationSummary: 'Validating...' });
-    setSelectedIdeaForYouTube({...targetIdea, isYouTubeLoading: true, untappedScore: 'Not Assessed' as UntappedScore, validationSummary: 'Validating...'});
+    handleUpdateIdea(ideaId, { isYouTubeLoading: true, untappedScore: 'Not Assessed' as UntappedScore, validationSummary: 'Validating...', aiCompetitiveAngle: 'Analyzing...' });
+    setSelectedIdeaForYouTube({...targetIdea, isYouTubeLoading: true, untappedScore: 'Not Assessed' as UntappedScore, validationSummary: 'Validating...', aiCompetitiveAngle: 'Analyzing...'});
     setShowYouTubeModal(true);
 
     try {
-      const results = await searchYouTubeForExistingVideos(targetIdea.text, 5); // Fetch up to 5 results
-      const { score, summary } = analyzeYouTubeResults(results);
+      const results = await searchYouTubeForExistingVideos(targetIdea.text, 10); // Fetch up to 10 results
+      const { score, summary } = analyzeYouTubeResults(results, targetIdea.text);
       
-      const updatedIdeaWithYT: Partial<VideoIdea> = { 
+      let aiAngle = "AI is analyzing competitor angles...";
+      if (results.length > 0) {
+          // Update UI immediately with interim analysis before AI angle
+          const interimUpdate: Partial<VideoIdea> = { 
+            youtubeResults: results, 
+            untappedScore: score,
+            validationSummary: summary,
+            isYouTubeLoading: true, // Keep loading true until AI angle is fetched
+            lastValidatedAt: new Date().toISOString(),
+            aiCompetitiveAngle: aiAngle 
+          };
+          handleUpdateIdea(ideaId, interimUpdate);
+          const currentIdeaForModalInterim = ideas.find(i => i.id === ideaId);
+          if (currentIdeaForModalInterim) {
+            setSelectedIdeaForYouTube({ ...currentIdeaForModalInterim, ...interimUpdate });
+          }
+          
+          // Now fetch AI competitive angle
+          aiAngle = await analyzeYouTubeCompetitorsForAngles(targetIdea.text, results);
+      } else {
+          aiAngle = "AI STRATEGIC ANGLE:\nOverall Assessment: No direct competitor videos found in the top 10 search results.\nActionable Angles:\n* This suggests a strong opportunity to be one of the first to cover this specific topic.\n* Focus on creating a comprehensive, high-quality foundational video.\n* Ensure thorough keyword research to capture initial search interest.";
+      }
+      
+      const finalUpdate: Partial<VideoIdea> = { 
         youtubeResults: results, 
         isYouTubeLoading: false, 
         untappedScore: score,
         validationSummary: summary,
+        aiCompetitiveAngle: aiAngle, // Store the AI's strategic angle
         lastValidatedAt: new Date().toISOString(),
       };
-      handleUpdateIdea(ideaId, updatedIdeaWithYT);
-      // Fetch the latest state of the idea to update the modal
-      const currentIdeaForModal = ideas.find(i => i.id === ideaId);
-      if (currentIdeaForModal) {
-        setSelectedIdeaForYouTube({ ...currentIdeaForModal, ...updatedIdeaWithYT });
+      handleUpdateIdea(ideaId, finalUpdate);
+      const currentIdeaForModalFinal = ideas.find(i => i.id === ideaId);
+      if (currentIdeaForModalFinal) {
+        setSelectedIdeaForYouTube({ ...currentIdeaForModalFinal, ...finalUpdate });
       }
 
       if (results.length === 0) {
@@ -521,6 +556,7 @@ const App: React.FC = () => {
         isYouTubeLoading: false, 
         untappedScore: 'Error' as UntappedScore,
         validationSummary: `Error: ${errorMessage}`,
+        aiCompetitiveAngle: "AI analysis could not be performed due to an error.",
         youtubeResults: currentIdeaState?.youtubeResults || [{title: "Error fetching results", videoId: "error"}]
       };
       setSelectedIdeaForYouTube(currentIdeaState ? {...currentIdeaState, ...errorUpdate } : null);
@@ -539,12 +575,10 @@ const App: React.FC = () => {
       [IdeaStatus.PRIORITIZED]: [],
       [IdeaStatus.IN_PROGRESS]: [],
       [IdeaStatus.VIDEO_MADE]: [],
-      // [IdeaStatus.ARCHIVED]: [], // Removed Archived
       [IdeaStatus.DISCARDED]: [],
     } as CategorizedIdeas
   );
 
-  // This is the diagnostic message block
   const isApiKeyMissingOrPlaceholder = !import.meta.env.VITE_API_KEY || import.meta.env.VITE_API_KEY === "MISSING_API_KEY_WILL_FAIL" || import.meta.env.VITE_API_KEY === "YOUR_ACTUAL_GEMINI_API_KEY_HERE";
   const isYouTubeApiKeyMissingOrPlaceholder = !import.meta.env.VITE_YOUTUBE_API_KEY || import.meta.env.VITE_YOUTUBE_API_KEY === "MISSING_YOUTUBE_API_KEY" || import.meta.env.VITE_YOUTUBE_API_KEY === "YOUR_ACTUAL_YOUTUBE_API_KEY_HERE";
 
@@ -614,7 +648,6 @@ const App: React.FC = () => {
                 ) : (
                   <div className="space-y-8 md:space-y-10">
                     {Object.values(IdeaStatus).map(status => {
-                      // Removed IdeaStatus.ARCHIVED check as it's no longer in the enum
                       
                       let ideasToList = categorizedIdeas[status] || [];
                       if (status === IdeaStatus.VIDEO_MADE || status === IdeaStatus.DISCARDED ) {

@@ -31,10 +31,12 @@ export interface YouTubeVideoResult {
   videoId: string;
   thumbnailUrl?: string;
   channelTitle?: string;
+  channelId?: string; // NEW: To fetch subscriber count
+  channelSubscriberCountText?: string; // NEW: e.g., "1.5M subscribers"
   viewCountText?: string; // e.g., "1.2M views"
   publishedAtText?: string; // e.g., "3 years ago"
   publishedAtDate?: Date; // Added for easier sorting/comparison
-  descriptionSnippet?: string; // NEW: For AI competitor analysis
+  descriptionSnippet?: string; 
 }
 
 export interface TitleSuggestion {
@@ -53,8 +55,8 @@ export interface VideoIdea {
   createdAt: string; // ISO date string
   lastUpdatedAt: string; // ISO date string
   
-  optimalKeywords?: string[]; // NEW: Stores optimal keywords for this idea (e.g., from initial generation)
-  suggestedKeywords?: string[]; // Keywords from the "Research Keywords" feature
+  optimalKeywords?: string[]; 
+  suggestedKeywords?: string[]; 
   
   script?: string; 
   videoInstructions?: string; 
@@ -62,10 +64,11 @@ export interface VideoIdea {
   scriptLengthMinutes?: number; 
   
   expandedIdeas?: string[]; 
-  expandedIdeasWithKeywords?: Array<{text: string, keywords: string[]}>; // NEW: For storing expanded ideas with their keywords
+  expandedIdeasWithKeywords?: Array<{text: string, keywords: string[]}>; 
 
   youtubeResults?: YouTubeVideoResult[]; 
-  youtubeAnalysis?: string; // NEW: AI's analysis of competitor angles/improvements
+  youtubeAnalysis?: string; // DEPRECATED: Replaced by aiCompetitiveAngle for clarity, kept for potential old data.
+  aiCompetitiveAngle?: string; // NEW: AI's strategic advice based on competitor analysis
   
   isScriptLoading?: boolean;
   isExpanding?: boolean;
@@ -107,10 +110,10 @@ export interface FlashMessage {
 
 // NEW: For AI Strategic Guidance (PRD 1.7)
 export interface AIStrategicGuidance {
-  mainRecommendation?: string; // e.g., "Focus on beginner guides for Zelle as search volume is high..."
-  recommendedNiches?: string[]; // e.g., ["AI & Machine Learning", "Personal Finance"]
-  recommendedApps?: { niche: string; apps: string[] }[]; // e.g., [{niche: "AI & Machine Learning", apps: ["ChatGPT", "Midjourney"]}]
-  recommendedVideoTypes?: string[]; // e.g., ["Beginner Guides", "Troubleshooting", "Comparison Videos"]
+  mainRecommendation?: string; 
+  recommendedNiches?: string[]; 
+  recommendedApps?: { niche: string; apps: string[] }[]; 
+  recommendedVideoTypes?: string[]; 
 }
 
 export interface HighRpmNicheInfo {
@@ -119,9 +122,6 @@ export interface HighRpmNicheInfo {
   label: string; 
 }
 
-// PRD 1.7 specified `HIGH_RPM_NICHES: string[]` in one section.
-// However, the existing code and UI rely on the more structured `HighRpmNicheInfo[]`.
-// For now, `HighRpmNicheInfo[]` is maintained for stability. If a simple string array is strictly needed later for a specific function, it can be derived.
 export const HIGH_RPM_NICHES: HighRpmNicheInfo[] = [
   { name: 'Personal Finance', label: 'Personal Finance (e.g., Budgeting, Investing, Debt)' },
   { name: 'Online Banking', examples: 'Zelle, Venmo, Chime', label: 'Online Banking (e.g. Zelle, Venmo)' },

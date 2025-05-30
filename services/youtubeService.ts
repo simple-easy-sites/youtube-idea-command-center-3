@@ -1,4 +1,3 @@
-
 // services/youtubeService.ts
 
 /**
@@ -20,9 +19,18 @@ if (!YOUTUBE_API_KEY || YOUTUBE_API_KEY === "YOUR_ACTUAL_YOUTUBE_API_KEY_HERE" |
   console.error("YouTube Service: VITE_YOUTUBE_API_KEY is missing or a placeholder. Real YouTube searches will fail. Ensure VITE_YOUTUBE_API_KEY is set in Vercel Environment Variables.");
 }
 
+const formatSubscriberCount = (count: string): string => {
+    const num = parseInt(count);
+    if (isNaN(num)) return "N/A subscribers";
+    if (num >= 1000000) return (num / 1000000).toFixed(1).replace(/\.0$/, '') + 'M subscribers';
+    if (num >= 1000) return (num / 1000).toFixed(1).replace(/\.0$/, '') + 'K subscribers';
+    return `${num} subscribers`;
+};
+
+
 export const searchYouTubeForExistingVideos = async (
   query: string,
-  maxResults: number = 5
+  maxResults: number = 10 // Increased from 5 to 10
 ): Promise<YouTubeVideoResult[]> => {
   if (!YOUTUBE_API_KEY || YOUTUBE_API_KEY === "YOUR_ACTUAL_YOUTUBE_API_KEY_HERE" || YOUTUBE_API_KEY === "MISSING_YOUTUBE_API_KEY") {
     console.warn("YouTube Service: Missing/placeholder VITE_YOUTUBE_API_KEY. Returning mock data.");
@@ -32,11 +40,14 @@ export const searchYouTubeForExistingVideos = async (
       const monthsAgo = Math.floor(Math.random() * 36) + 1; 
       const mockDate = new Date();
       mockDate.setMonth(mockDate.getMonth() - monthsAgo);
+      const mockSubscribers = Math.floor(Math.random() * 100000) + 100;
       mockResults.push({
         title: `[MOCK] How to ${query.substring(0, 40)}... - Video ${i}`,
         videoId: `mockVideoId_${i}_${Date.now()}`,
         thumbnailUrl: `https://via.placeholder.com/168x94.png?text=Mock+Video+${i}`,
         channelTitle: `Mock Channel ${i}`,
+        channelId: `mockChannelId_${i}`,
+        channelSubscriberCountText: formatSubscriberCount(mockSubscribers.toString()),
         viewCountText: `${Math.floor(Math.random() * 1000) +1}K views`,
         publishedAtText: monthsAgo > 12 ? `${Math.floor(monthsAgo/12)} year(s) ago` : `${monthsAgo} month(s) ago`,
         publishedAtDate: mockDate,
@@ -48,15 +59,18 @@ export const searchYouTubeForExistingVideos = async (
 
   const YOUTUBE_SEARCH_URL = 'https://www.googleapis.com/youtube/v3/search';
   const YOUTUBE_VIDEOS_URL = 'https://www.googleapis.com/youtube/v3/videos';
+  const YOUTUBE_CHANNELS_URL = 'https://www.googleapis.com/youtube/v3/channels';
 
   try {
-    // Step 1: Search for videos
+    // Step 1: Search for videos (gets videoId, title, channelId, channelTitle from snippet)
     const searchParams = new URLSearchParams({
       part: 'snippet',
       q: query,
       type: 'video',
       maxResults: maxResults.toString(),
       key: YOUTUBE_API_KEY,
+      relevanceLanguage: 'en', // Added for better search results
+      regionCode: 'US', // Added for better search results
     });
     const searchResponse = await fetch(`${YOUTUBE_SEARCH_URL}?${searchParams.toString()}`);
     if (!searchResponse.ok) {
@@ -66,26 +80,56 @@ export const searchYouTubeForExistingVideos = async (
     }
     const searchData = await searchResponse.json();
 
-    const videoIds = searchData.items?.map((item: any) => item.id?.videoId).filter(Boolean) || [];
-    if (videoIds.length === 0) {
+    const videoSnippets = searchData.items?.map((item: any) => ({
+        videoId: item.id?.videoId,
+        channelId: item.snippet?.channelId,
+        channelTitle: item.snippet?.channelTitle,
+    })).filter((item: any) => item.videoId && item.channelId) || [];
+
+    if (videoSnippets.length === 0) {
       return []; 
     }
 
-    // Step 2: Get statistics (views, etc.) and full snippet (including description) for found videos
-    const videoParams = new URLSearchParams({
-      part: 'statistics,snippet', // snippet for title, thumbnails, channelTitle, publishedAt, description; statistics for viewCount
+    const videoIds = videoSnippets.map((snippet: any) => snippet.videoId);
+    const channelIds = [...new Set(videoSnippets.map((snippet: any) => snippet.channelId))]; // Unique channel IDs
+
+    // Step 2: Get statistics (views, etc.) and full snippet for found videos
+    const videoDetailsParams = new URLSearchParams({
+      part: 'statistics,snippet', 
       id: videoIds.join(','),
       key: YOUTUBE_API_KEY,
     });
-    const videoResponse = await fetch(`${YOUTUBE_VIDEOS_URL}?${videoParams.toString()}`);
-    if (!videoResponse.ok) {
-        const errorData = await videoResponse.json();
+    const videoDetailsResponse = await fetch(`${YOUTUBE_VIDEOS_URL}?${videoDetailsParams.toString()}`);
+    if (!videoDetailsResponse.ok) {
+        const errorData = await videoDetailsResponse.json();
         console.error('YouTube Videos API Error Response:', errorData);
-        throw new Error(`YouTube Videos API Error (${videoResponse.status}): ${errorData.error?.message || videoResponse.statusText}`);
+        throw new Error(`YouTube Videos API Error (${videoDetailsResponse.status}): ${errorData.error?.message || videoDetailsResponse.statusText}`);
     }
-    const videoData = await videoResponse.json();
+    const videoDetailsData = await videoDetailsResponse.json();
+    
+    // Step 3: Get subscriber counts for channels
+    let channelStatsMap = new Map<string, string>();
+    if (channelIds.length > 0) {
+        const channelParams = new URLSearchParams({
+            part: 'statistics',
+            id: channelIds.join(','),
+            key: YOUTUBE_API_KEY,
+        });
+        const channelResponse = await fetch(`${YOUTUBE_CHANNELS_URL}?${channelParams.toString()}`);
+        if (channelResponse.ok) {
+            const channelData = await channelResponse.json();
+            channelData.items?.forEach((channel: any) => {
+                if (channel.id && channel.statistics?.subscriberCount) {
+                    channelStatsMap.set(channel.id, formatSubscriberCount(channel.statistics.subscriberCount));
+                }
+            });
+        } else {
+            console.warn('Could not fetch channel statistics:', await channelResponse.text());
+        }
+    }
 
-    const results: YouTubeVideoResult[] = videoData.items?.map((item: any) => {
+
+    const results: YouTubeVideoResult[] = videoDetailsData.items?.map((item: any) => {
       const viewCount = item.statistics?.viewCount ? parseInt(item.statistics.viewCount).toLocaleString() : 'N/A';
       
       let publishedAtText = 'Recently';
@@ -122,15 +166,17 @@ export const searchYouTubeForExistingVideos = async (
         }
       }
       
-      // Extract a snippet of the description
       const description = item.snippet?.description || '';
       const descriptionSnippet = description.substring(0, 150) + (description.length > 150 ? '...' : '');
+      const channelId = item.snippet?.channelId;
 
       return {
         title: item.snippet?.title || 'Unknown Title',
         videoId: item.id, 
         thumbnailUrl: item.snippet?.thumbnails?.medium?.url || item.snippet?.thumbnails?.high?.url || item.snippet?.thumbnails?.default?.url,
         channelTitle: item.snippet?.channelTitle || 'Unknown Channel',
+        channelId: channelId,
+        channelSubscriberCountText: channelId ? channelStatsMap.get(channelId) || "N/A subscribers" : "N/A subscribers",
         viewCountText: `${viewCount} views`,
         publishedAtText: publishedAtText,
         publishedAtDate: publishedAtDate,

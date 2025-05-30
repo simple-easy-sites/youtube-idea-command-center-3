@@ -258,7 +258,7 @@ Begin Generation:
         contents: prompt,
         config: { 
             systemInstruction: systemInstruction,
-            temperature: 0.5, // Lower temperature for more direct, less "creative" script
+            temperature: 0.5, 
             topP: 0.85, 
             topK: 40 
         }
@@ -561,55 +561,66 @@ Do NOT include any other text, preamble, or concluding remarks outside of this s
 
 export const analyzeYouTubeCompetitorsForAngles = async (
     ideaText: string,
-    competitorVideos: YouTubeVideoResult[]
+    competitorVideos: YouTubeVideoResult[] // Expecting richer competitor info now
 ): Promise<string> => {
     if (shouldUseMockData) {
         console.warn("Gemini (analyzeYouTubeCompetitorsForAngles): Missing/placeholder VITE_API_KEY. Returning mock data.");
         await new Promise(resolve => setTimeout(resolve, 400));
-        if (competitorVideos.length === 0) return "AI ANGLE INSIGHT: No competitor videos found. This topic seems wide open! Focus on a comprehensive beginner's guide.";
-        return `AI ANGLE INSIGHT: Mock analysis suggests focusing on a more up-to-date (2024) version for "${ideaText}", as existing mock videos like "${competitorVideos[0].title}" seem older. Also, consider a unique practical example not covered by others.`;
+        if (competitorVideos.length === 0) return "AI STRATEGIC ANGLE: Mock: No competitor videos found. This topic seems wide open! Focus on a comprehensive beginner's guide, clearly dated for the current year.";
+        const mockComp = competitorVideos[0];
+        return `AI STRATEGIC ANGLE: Mock: Given competitors like "${mockComp.title}" (Views: ${mockComp.viewCountText}, Age: ${mockComp.publishedAtText}, Channel Subs: ${mockComp.channelSubscriberCountText}), consider a more up-to-date (2024) version for "${ideaText}". Also, explore a unique practical example not covered by others, especially if competitors have low subscriber counts but high views on similar topics.`;
     }
-    if (!API_KEY) return 'API Key not configured. Cannot analyze competitors.'; // API_KEY here refers to import.meta.env.VITE_API_KEY
+    if (!API_KEY) return 'AI STRATEGIC ANGLE: API Key not configured. Cannot analyze competitors.';
 
     const competitorInfo = competitorVideos
-      .map(vid => `Title: "${vid.title}"\nDescription Snippet: "${vid.descriptionSnippet || 'N/A'}"\nViews: ${vid.viewCountText}\nAge: ${vid.publishedAtText}`)
-      .slice(0, 5) 
+      .map(vid => `- Title: "${vid.title}"\n  Description Snippet: "${vid.descriptionSnippet || 'N/A'}"\n  Views: ${vid.viewCountText}\n  Age: ${vid.publishedAtText}\n  Channel Subscribers: ${vid.channelSubscriberCountText || 'N/A'}`)
+      .slice(0, 7) // Analyze up to 7 competitors
       .join('\n---\n');
 
-    const prompt = `You are a YouTube Content Strategist and SEO expert.
-Your task is to analyze the provided competitor videos for the target video idea: "${ideaText}".
+    const prompt = `You are an expert YouTube Content Strategist.
+Your task is to analyze the provided competitor video data for the target video idea: "${ideaText}".
 
 Competitor Videos Data:
-${competitorInfo}
+${competitorInfo.length > 0 ? competitorInfo : "No competitor videos provided for analysis."}
 
-Based ONLY on this analysis, identify 1-2 unique angles, improvements, or underserved aspects that a new video on "${ideaText}" could focus on to differentiate itself and potentially rank better or offer more value. Consider:
-- Gaps in content or depth in the existing videos.
-- Outdated information if competitor videos are old.
-- Opportunities for a clearer, more concise, or more engaging explanation.
-- A specific niche audience or problem not fully addressed.
+Based on this data, provide:
+1.  **Overall Assessment (1-2 sentences):** Briefly summarize the competitive landscape. Is it crowded, sparse, dominated by old content, or are there videos from low-subscriber channels getting high views (indicating strong topic demand)?
+2.  **Actionable Strategic Angles (2-3 bullet points):** Suggest specific, actionable angles or improvements a new video on "${ideaText}" could focus on to differentiate itself and offer more value. Consider:
+    *   **Content Gaps/Depth:** Are there aspects competitor videos miss or only cover superficially?
+    *   **Freshness/Updates:** If existing videos are old, emphasize creating an up-to-date version.
+    *   **Unique Value Proposition:** How can the new video be clearer, more engaging, or solve a specific problem better? (e.g., "Focus on a hands-on tutorial if others are theoretical.")
+    *   **Niche Down:** Could targeting a specific sub-audience or use-case be beneficial? (e.g., "Create a guide specifically for [X audience] using [Tool] for [Y task]").
+    *   **Leverage View/Subscriber Discrepancies:** If videos from channels with few subscribers have high views, this signals strong interest. How can this be capitalized on?
 
-Provide concise, actionable suggestions. Start your response with "AI ANGLE INSIGHT:".
-Be specific. For example, instead of "make it better," suggest "AI ANGLE INSIGHT: Competitor videos lack detail on troubleshooting X; a new video could offer a dedicated section on common X errors and their fixes."
-If no clear angle is apparent from the provided snippets, state that.
+Output Format:
+Start with "AI STRATEGIC ANGLE:"
+Then "Overall Assessment:" followed by your assessment.
+Then "Actionable Angles:" followed by bulleted suggestions.
+
+Example:
+AI STRATEGIC ANGLE:
+Overall Assessment: The topic has several videos, but many are over a year old and focus on broad overviews. One video from a channel with only 5K subscribers has 100K views, indicating high interest in practical application.
+Actionable Angles:
+*   Develop a comprehensive, up-to-date (current year) tutorial focusing on practical application with a real-world project example.
+*   If competitors are mostly theoretical, create a step-by-step, hands-on guide showing the "how-to" in detail.
+*   Address a common pain point mentioned in competitor comments (if known) or a frequently asked question not well-covered by existing videos.
 `;
 
     try {
         const response = await ai.models.generateContent({
             model: modelName,
             contents: prompt,
-            config: { temperature: 0.6, topP: 0.9, topK: 30 }
+            config: { temperature: 0.65, topP: 0.9, topK: 40 }
         });
         
         const text = response.text;
         if (!text) {
-          return 'AI ANGLE INSIGHT: AI analysis did not return a specific insight.';
+          return 'AI STRATEGIC ANGLE:\nOverall Assessment: AI analysis did not return a specific insight.\nActionable Angles:\n*   Consider general best practices: up-to-date content, clear explanations, and unique examples.';
         }
-        return text.trim(); 
+        return text.trim().startsWith("AI STRATEGIC ANGLE:") ? text.trim() : `AI STRATEGIC ANGLE:\n${text.trim()}`; 
     } catch (error) {
         console.error('Error calling Gemini API for competitor analysis:', error);
-        if (error instanceof Error) {
-            return `AI ANGLE INSIGHT: Error during analysis - ${error.message}`;
-        }
-        return 'AI ANGLE INSIGHT: An unknown error occurred during AI analysis.';
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error during AI analysis.';
+        return `AI STRATEGIC ANGLE:\nOverall Assessment: Error during analysis - ${errorMessage}\nActionable Angles:\n*   Review competitor videos manually to identify gaps.`;
     }
 };

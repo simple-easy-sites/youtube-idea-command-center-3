@@ -56,13 +56,13 @@ const YouTubeVideoCard: React.FC<{ video: YouTubeVideoResult }> = ({ video }) =>
       href={`https://www.youtube.com/watch?v=${video.videoId}`} 
       target="_blank" 
       rel="noopener noreferrer"
-      className="glass-card-subtle !p-4 rounded-xl flex flex-col sm:flex-row items-start space-x-0 sm:space-x-4 hover:!shadow-sky-500/50 hover:!border-sky-400/70 transition-all duration-300 group animate-fadeIn" // Using subtle glass for cards
+      className="glass-card-subtle !p-4 rounded-xl flex flex-col sm:flex-row items-start space-x-0 sm:space-x-4 hover:!shadow-sky-500/50 hover:!border-sky-400/70 transition-all duration-300 group animate-fadeIn" 
     >
       {video.thumbnailUrl && (
         <img 
           src={video.thumbnailUrl} 
           alt={video.title} 
-          className="w-full sm:w-48 h-auto sm:h-[108px] object-cover rounded-lg mb-3 sm:mb-0 shadow-lg group-hover:shadow-xl transition-shadow border border-[var(--glass-border-color)]" // Slightly larger thumbnail
+          className="w-full sm:w-48 h-auto sm:h-[108px] object-cover rounded-lg mb-3 sm:mb-0 shadow-lg group-hover:shadow-xl transition-shadow border border-[var(--glass-border-color)]" 
         />
       )}
       <div className="flex-1">
@@ -70,6 +70,9 @@ const YouTubeVideoCard: React.FC<{ video: YouTubeVideoResult }> = ({ video }) =>
           {video.title}
         </h4>
         <p className="text-sm text-[var(--text-secondary)] group-hover:text-[var(--text-primary)] transition-colors mt-1.5">{video.channelTitle}</p>
+        {video.channelSubscriberCountText && (
+            <p className="text-xs text-sky-400/80 group-hover:text-sky-300 transition-colors mt-0.5">{video.channelSubscriberCountText}</p>
+        )}
         <div className="flex items-center justify-between text-xs text-[var(--text-tertiary)] group-hover:text-[var(--text-secondary)] transition-colors mt-2">
           <span>{video.viewCountText}</span>
           <span>{video.publishedAtText}</span>
@@ -85,6 +88,7 @@ export const YouTubeViewerModal: React.FC<YouTubeViewerModalProps> = ({ isOpen, 
 
   const isLoadingYouTubeResults = idea?.isYouTubeLoading ?? false;
   const results = idea?.youtubeResults || [];
+  const aiAngle = idea?.aiCompetitiveAngle || null;
 
   const handleRefresh = () => {
     if (idea) {
@@ -113,16 +117,25 @@ export const YouTubeViewerModal: React.FC<YouTubeViewerModalProps> = ({ isOpen, 
         </header>
 
         <main className="p-5 md:p-6 space-y-5 overflow-y-auto flex-grow scrollbar-thin scrollbar-thumb-[var(--scrollbar-thumb)] scrollbar-track-[var(--scrollbar-track)]">
-          {isLoadingYouTubeResults && (!idea.untappedScore || idea.untappedScore === 'Not Assessed' || idea.validationSummary === 'Validating...') ? (
+          {isLoadingYouTubeResults && (!idea.untappedScore || idea.untappedScore === 'Not Assessed' || idea.validationSummary === 'Validating...' || idea.aiCompetitiveAngle === 'Analyzing...') ? (
             <div className="flex flex-col items-center justify-center h-full min-h-[300px]">
               <LoadingSpinner size="lg" color="text-blue-400" />
-              <p className="mt-5 text-lg text-[var(--text-secondary)]">Fetching YouTube data & assessing potential...</p>
+              <p className="mt-5 text-lg text-[var(--text-secondary)]">Fetching YouTube data & AI analysis...</p>
             </div>
           ) : (
             <>
               <UntappedScoreDisplay score={idea.untappedScore} summary={idea.validationSummary} />
+              
+              {aiAngle && aiAngle !== 'Analyzing...' && (
+                <div className="my-4 p-4 rounded-lg border border-purple-500/40 bg-purple-700/20 glass-card-subtle animate-fadeIn">
+                  <h3 className="text-lg font-semibold text-purple-300 mb-2">AI Strategic Angle & Insights:</h3>
+                  <pre className="text-sm text-purple-200/90 whitespace-pre-wrap leading-relaxed">{aiAngle.replace(/^AI STRATEGIC ANGLE:/i, '').trim()}</pre>
+                </div>
+              )}
+
               {results.length > 0 ? (
                 <div className="space-y-5">
+                  <h3 className="text-lg font-semibold text-sky-200 mb-1">Similar YouTube Videos:</h3>
                   {results.map((video, index) => (
                     <div key={video.videoId} className="animate-fadeIn" style={{animationDelay: `${index * 0.07}s`}}>
                         <YouTubeVideoCard video={video} />
