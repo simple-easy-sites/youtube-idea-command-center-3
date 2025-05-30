@@ -1,6 +1,5 @@
 
 
-
 import React, { useState } from 'react';
 import { VideoIdea, IdeaStatus, IdeaPriority, GroundingChunk, TitleSuggestion, UntappedScore } from '../types';
 import { PRIORITY_OPTIONS, STATUS_BORDER_CLASSES } from '../constants';
@@ -14,12 +13,9 @@ interface IdeaCardProps {
   onUpdateIdea: (id: string, updates: Partial<VideoIdea>) => void;
   onDeleteIdea: (id: string) => void;
   onGenerateKeywords: (ideaId: string) => Promise<void>;
-  onGenerateScriptAndInstructions: (ideaId: string, lengthMinutes: number) => Promise<void>;
   onExpandIdea: (ideaId: string) => Promise<void>;
-  onShowScriptModal: (ideaId: string) => void;
   onShowYouTubeValidation: (ideaId: string, forceRefresh?: boolean) => void; 
   onGenerateTitleSuggestions: (ideaId: string) => Promise<void>; 
-  isLoadingScriptGlobal?: boolean; 
   isLoadingExpansionGlobal?: boolean;
 }
 
@@ -43,7 +39,7 @@ const IconBase: React.FC<{ children: React.ReactNode, className?: string }> = ({
   </svg>
 );
 
-const ScriptIcon = () => <IconBase><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0_12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></IconBase>;
+// const ScriptIcon = () => <IconBase><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0_12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></IconBase>; // Removed
 const ExpandIcon = () => <IconBase><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75v4.5m0-4.5h-4.5m4.5 0L15 9m5.25 11.25v-4.5m0 4.5h-4.5m4.5 0L15 15" /></IconBase>;
 const YouTubeIcon = () => <IconBase><path strokeLinecap="round" strokeLinejoin="round" d="M6.75 7.5l3 2.25-3 2.25v-4.5zm3.75 0l3 2.25-3 2.25v-4.5zm3.75 0l3 2.25-3 2.25v-4.5z M4.5 19.5h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15A2.25 2.25 0 002.25 6.75v10.5A2.25 2.25 0 004.5 19.5z" /></IconBase>;
 const KeywordIcon = () => <IconBase><path strokeLinecap="round" strokeLinejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v3.75m-5.25 0V3.888c-.055-.194-.084-.4-.084-.612m0 0A2.25 2.25 0 005.25 2.25h-3A2.25 2.25 0 000 4.5v15A2.25 2.25 0 002.25 21.75h19.5A2.25 2.25 0 0024 19.5V4.5A2.25 2.25 0 0021.75 2.25h-3.375c-.69 0-1.307.348-1.688.934L15.666 3.888zM12 7.5a2.25 2.25 0 100 4.5 2.25 2.25 0 000-4.5z" /></IconBase>;
@@ -80,17 +76,14 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({
     onUpdateIdea, 
     onDeleteIdea, 
     onGenerateKeywords,
-    onGenerateScriptAndInstructions, 
     onExpandIdea,
-    onShowScriptModal,
     onShowYouTubeValidation,
     onGenerateTitleSuggestions,
-    isLoadingScriptGlobal, 
     isLoadingExpansionGlobal
 }) => {
   
-  const [targetScriptLength, setTargetScriptLength] = useState<number>(idea.scriptLengthMinutes || 4);
-  const [isGeneratingScriptForThisCard, setIsGeneratingScriptForThisCard] = useState(false);
+  // const [targetScriptLength, setTargetScriptLength] = useState<number>(idea.scriptLengthMinutes || 4); // Removed
+  // const [isGeneratingScriptForThisCard, setIsGeneratingScriptForThisCard] = useState(false); // Removed
   const [isExpandingForThisCard, setIsExpandingForThisCard] = useState(false);
   const [isResearchingKeywordsForThisCard, setIsResearchingKeywordsForThisCard] = useState(false);
   const [isOptimizingTitleForThisCard, setIsOptimizingTitleForThisCard] = useState(false);
@@ -115,11 +108,11 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({
     setIsOptimizingTitleForThisCard(false);
   };
 
-  const handleGenerateScriptClick = async () => {
-    setIsGeneratingScriptForThisCard(true);
-    await onGenerateScriptAndInstructions(idea.id, targetScriptLength);
-    setIsGeneratingScriptForThisCard(false);
-  };
+  // const handleGenerateScriptClick = async () => { // Removed
+  //   setIsGeneratingScriptForThisCard(true);
+  //   await onGenerateScriptAndInstructions(idea.id, targetScriptLength);
+  //   setIsGeneratingScriptForThisCard(false);
+  // };
 
   const handleExpandIdeaClick = async () => {
     setIsExpandingForThisCard(true);
@@ -130,11 +123,11 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({
   const cardBorderClass = STATUS_BORDER_CLASSES[idea.status] || 'border-l-[var(--glass-border-color)]';
   const isHighPriorityNonTerminal = idea.priority === IdeaPriority.HIGH && idea.status !== IdeaStatus.VIDEO_MADE && idea.status !== IdeaStatus.DISCARDED;
   
-  const isPrioritized = idea.status === IdeaStatus.PRIORITIZED; // AI tools primarily for prioritized ideas
+  const isPrioritized = idea.status === IdeaStatus.PRIORITIZED; 
 
-  const isAnyActionLoading = idea.isScriptLoading || idea.isExpanding || idea.isKeywordsLoading || idea.isTitleOptimizing ||
-                             isGeneratingScriptForThisCard || isExpandingForThisCard || isResearchingKeywordsForThisCard || isOptimizingTitleForThisCard ||
-                             !!isLoadingScriptGlobal || !!isLoadingExpansionGlobal;
+  const isAnyActionLoading = idea.isExpanding || idea.isKeywordsLoading || idea.isTitleOptimizing ||
+                             isExpandingForThisCard || isResearchingKeywordsForThisCard || isOptimizingTitleForThisCard ||
+                             !!isLoadingExpansionGlobal;
   
   const detailTextColor = "text-[var(--text-secondary)]";
   const labelTextColor = "text-[var(--text-tertiary)]";
@@ -250,30 +243,7 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({
           >
             <KeywordIcon /> Research Keywords
           </Button>
-          <div className="flex items-end space-x-3"> 
-            <Input
-              label="Video Length (min)"
-              id={`length-${idea.id}`}
-              type="number"
-              min="1"
-              max="60"
-              value={targetScriptLength.toString()}
-              onChange={(e) => setTargetScriptLength(parseInt(e.target.value) || 4)}
-              containerClassName="flex-grow"
-              className="!text-sm !py-2.5 !bg-opacity-70"
-              disabled={isAnyActionLoading}
-            />
-            <Button 
-              variant="secondary" 
-              size="sm" 
-              onClick={handleGenerateScriptClick}
-              isLoading={isGeneratingScriptForThisCard || idea.isScriptLoading}
-              disabled={isAnyActionLoading}
-              className="whitespace-nowrap !px-4 !py-[0.69rem] !font-medium !tracking-wide" 
-            >
-              <ScriptIcon /> Generate Script
-            </Button>
-          </div>
+          {/* Script Generation UI Removed */}
           <Button 
             variant="secondary" 
             size="sm" 
@@ -287,18 +257,7 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({
         </div>
       )}
       
-      {(idea.script || (idea.suggestedKeywords && idea.suggestedKeywords.length > 0) || (idea.titleSuggestions && idea.titleSuggestions.length > 0) ) && ( 
-        <div className={`mt-1.5 ${isPrioritized && !idea.script && (!idea.titleSuggestions || idea.titleSuggestions.length === 0) ? 'pt-0' : 'pt-4 border-t border-[var(--glass-border-color)]'}`}>
-          <Button
-            variant="ghost" 
-            size="sm"
-            onClick={() => onShowScriptModal(idea.id)}
-            className="w-full !font-medium text-sky-300 border-sky-500/50 hover:bg-sky-700/40 hover:text-sky-200 hover:border-sky-500/70 !tracking-wide"
-          >
-            <ScriptIcon /> View Full Content Plan
-          </Button>
-        </div>
-      )}
+      {/* "View Full Content Plan" button removed */}
 
       <div className="mt-1.5">
          <Button 
@@ -317,7 +276,7 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({
       {[
         { condition: idea.titleSuggestions && idea.titleSuggestions.length > 0, title: "Optimized Title Suggestions", data: idea.titleSuggestions, render: (s: TitleSuggestion) => <li key={s.suggestedTitle} className="border-b border-[var(--glass-border-color)] pb-2.5 mb-2.5 last:border-b-0 last:pb-0 last:mb-0 interactive-list-item p-2"><strong className="text-purple-300 block text-sm">{s.suggestedTitle}</strong><p className="text-[var(--text-tertiary)] italic mt-1 text-xs">{s.rationale}</p></li> },
         { condition: idea.suggestedKeywords && idea.suggestedKeywords.length > 0, title: "Suggested Keywords", data: idea.suggestedKeywords, render: (k: string, i: number) => <li key={i} className="text-sm interactive-list-item p-1">{k}</li>, groundingChunks: idea.keywordSearchGroundingChunks },
-        { condition: idea.script, title: "Generated Script Snippet", data: idea.script ? idea.script.substring(0, 300) + (idea.script.length > 300 ? "..." : "") : "", type: 'pre' },
+        // { condition: idea.script, title: "Generated Script Snippet", data: idea.script ? idea.script.substring(0, 300) + (idea.script.length > 300 ? "..." : "") : "", type: 'pre' }, // Removed
         { condition: idea.expandedIdeas && idea.expandedIdeas.length > 0, title: "Expanded Idea Titles", data: idea.expandedIdeas, render: (ei: string, i: number) => <li key={i} className="text-sm interactive-list-item p-1">{ei}</li> },
       ].map(section => section.condition && (
         <CollapsibleSection 
@@ -327,13 +286,9 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({
             contentClassName="!pt-3 !pb-4 !px-4 !bg-opacity-40"
             className="!border-opacity-50 !rounded-lg" 
         >
-          {section.type === 'pre' ? (
-            <pre className="whitespace-pre-wrap text-xs text-[var(--text-secondary)] bg-black/20 p-3.5 rounded-md max-h-48 overflow-y-auto border border-[var(--glass-border-color)] shadow-inner">{section.data as string}</pre>
-          ) : (
-            <ul className={`${section.title === "Suggested Keywords" || section.title === "Expanded Idea Titles" ? 'list-disc list-inside pl-1' : ''} space-y-1.5 text-[var(--text-secondary)] bg-black/20 p-3.5 rounded-md max-h-40 overflow-y-auto border border-[var(--glass-border-color)] shadow-inner`}>
-              {(section.data as any[]).map(section.render!)}
-            </ul>
-          )}
+          <ul className={`${section.title === "Suggested Keywords" || section.title === "Expanded Idea Titles" ? 'list-disc list-inside pl-1' : ''} space-y-1.5 text-[var(--text-secondary)] bg-black/20 p-3.5 rounded-md max-h-40 overflow-y-auto border border-[var(--glass-border-color)] shadow-inner`}>
+            {(section.data as any[]).map(section.render!)}
+          </ul>
           {section.title === "Suggested Keywords" && section.groundingChunks && section.groundingChunks.length > 0 && (
             <div className="mt-3 pt-2.5 border-t border-[var(--glass-border-color)]">
               <p className="text-xs font-semibold text-[var(--text-tertiary)] mb-1.5">Sources (Google Search):</p>

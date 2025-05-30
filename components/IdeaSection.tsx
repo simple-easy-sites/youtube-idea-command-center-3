@@ -1,5 +1,4 @@
 
-
 import React from 'react';
 import { VideoIdea, IdeaStatus } from '../types';
 import { IdeaCard } from './IdeaCard';
@@ -12,12 +11,9 @@ interface IdeaSectionProps {
   onUpdateIdea: (id: string, updates: Partial<VideoIdea>) => void;
   onDeleteIdea: (id: string) => void;
   onGenerateKeywords: (ideaId: string) => Promise<void>; 
-  onGenerateScriptAndInstructions: (ideaId: string, lengthMinutes: number) => Promise<void>;
   onExpandIdea: (ideaId: string) => Promise<void>;
-  onShowScriptModal: (ideaId: string) => void;
   onShowYouTubeValidation: (ideaId: string, forceRefresh?: boolean) => void; // Updated signature
   onGenerateTitleSuggestions: (ideaId: string) => Promise<void>; // New prop
-  isLoadingScriptGlobal?: boolean;
   isLoadingExpansionGlobal?: boolean;
 }
 
@@ -28,12 +24,9 @@ export const IdeaSection: React.FC<IdeaSectionProps> = ({
   onUpdateIdea, 
   onDeleteIdea,
   onGenerateKeywords,
-  onGenerateScriptAndInstructions,
   onExpandIdea,
-  onShowScriptModal,
   onShowYouTubeValidation,
   onGenerateTitleSuggestions, 
-  isLoadingScriptGlobal,
   isLoadingExpansionGlobal
 }) => {
   const defaultOpen = status === IdeaStatus.NEW || status === IdeaStatus.PRIORITIZED || (ideas.length > 0 && (status === IdeaStatus.IN_PROGRESS));
@@ -62,12 +55,9 @@ export const IdeaSection: React.FC<IdeaSectionProps> = ({
               onUpdateIdea={onUpdateIdea} 
               onDeleteIdea={onDeleteIdea}
               onGenerateKeywords={onGenerateKeywords}
-              onGenerateScriptAndInstructions={onGenerateScriptAndInstructions}
               onExpandIdea={onExpandIdea}
-              onShowScriptModal={onShowScriptModal}
               onShowYouTubeValidation={onShowYouTubeValidation} // Pass through
               onGenerateTitleSuggestions={onGenerateTitleSuggestions} 
-              isLoadingScriptGlobal={isLoadingScriptGlobal}
               isLoadingExpansionGlobal={isLoadingExpansionGlobal}
             />
           ))}

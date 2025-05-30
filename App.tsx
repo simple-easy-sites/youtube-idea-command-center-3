@@ -5,10 +5,10 @@ import { Header } from './components/Header';
 import { IdeaForm } from './components/IdeaForm';
 import { IdeaSection } from './components/IdeaSection';
 import { FlashMessageDisplay } from './components/FlashMessageDisplay';
-import { generateIdeasWithGemini, generateVideoScriptAndInstructions, expandIdeaIntoRelatedIdeas, generateKeywordsWithGemini, generateTitleSuggestionsWithGemini, analyzeYouTubeCompetitorsForAngles } from './services/geminiService';
+import { generateIdeasWithGemini, expandIdeaIntoRelatedIdeas, generateKeywordsWithGemini, generateTitleSuggestionsWithGemini, analyzeYouTubeCompetitorsForAngles } from './services/geminiService';
 import { getAllIdeas, saveAllIdeas, getLastActiveProfile, saveLastActiveProfile, getAllProfiles, saveAllProfiles } from './services/localStorageService';
 import { LoadingSpinner } from './components/ui/LoadingSpinner';
-import { ScriptViewerModal } from './components/ScriptViewerModal';
+// import { ScriptViewerModal } from './components/ScriptViewerModal'; // Removed
 import { YouTubeViewerModal } from './components/YouTubeViewerModal';
 import { TitleOptimizerModal } from './components/TitleOptimizerModal';
 import { searchYouTubeForExistingVideos } from './services/youtubeService';
@@ -31,8 +31,8 @@ const App: React.FC = () => {
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [flashMessages, setFlashMessages] = useState<FlashMessage[]>([]);
   
-  const [selectedIdeaForScript, setSelectedIdeaForScript] = useState<VideoIdea | null>(null);
-  const [showScriptModal, setShowScriptModal] = useState<boolean>(false);
+  // const [selectedIdeaForScript, setSelectedIdeaForScript] = useState<VideoIdea | null>(null); // Removed
+  // const [showScriptModal, setShowScriptModal] = useState<boolean>(false); // Removed
   
   const [selectedIdeaForYouTube, setSelectedIdeaForYouTube] = useState<VideoIdea | null>(null);
   const [showYouTubeModal, setShowYouTubeModal] = useState<boolean>(false);
@@ -292,51 +292,6 @@ const App: React.FC = () => {
     addFlashMessage('success', `Title updated for idea!`);
     setShowTitleOptimizerModal(false);
     setSelectedIdeaForTitleOptimization(null);
-  };
-
-  const handleGenerateScriptAndInstructions = async (ideaId: string, lengthMinutes: number) => {
-    const targetIdea = ideas.find(idea => idea.id === ideaId);
-    if (!targetIdea) {
-      addFlashMessage('error', 'Could not find the idea to generate script for.');
-      return;
-    }
-    handleUpdateIdea(ideaId, { isScriptLoading: true });
-    setSelectedIdeaForScript({...targetIdea, isScriptLoading: true});
-    setShowScriptModal(true); 
-    
-    try {
-      const { script, instructions, resources } = await generateVideoScriptAndInstructions(
-        targetIdea.text,
-        targetIdea.niche,
-        targetIdea.appSoftware,
-        lengthMinutes,
-        targetIdea.suggestedKeywords || targetIdea.optimalKeywords,
-        targetIdea.aiCompetitiveAngle // Pass the strategic angle
-      );
-      const updatedIdeaWithScript: Partial<VideoIdea> = { script, videoInstructions: instructions, suggestedResources: resources, scriptLengthMinutes: lengthMinutes, isScriptLoading: false };
-      handleUpdateIdea(ideaId, updatedIdeaWithScript);
-      const currentIdeaForModal = ideas.find(i => i.id === ideaId);
-      if (currentIdeaForModal) {
-        setSelectedIdeaForScript({ ...currentIdeaForModal, ...updatedIdeaWithScript, isScriptLoading: false });
-      }
-      addFlashMessage('success', `Script & instructions generated for "${targetIdea.text.substring(0,30)}...". ${targetIdea.aiCompetitiveAngle ? 'Strategic angle considered.': (targetIdea.suggestedKeywords || targetIdea.optimalKeywords) ? 'Keywords were considered.' : ''}`);
-    } catch (error) {
-      console.error("Error generating script:", error);
-      addFlashMessage('error', `Failed to generate script: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      const currentIdeaState = ideas.find(i => i.id === ideaId);
-      setSelectedIdeaForScript(currentIdeaState ? {...currentIdeaState, isScriptLoading: false, script: currentIdeaState.script || "Error during generation."} : null);
-      handleUpdateIdea(ideaId, { isScriptLoading: false });
-    }
-  };
-  
-  const handleShowScriptModal = (ideaId: string) => {
-    const targetIdea = ideas.find(idea => idea.id === ideaId);
-    if (targetIdea && (targetIdea.script || targetIdea.isScriptLoading || targetIdea.suggestedKeywords || targetIdea.optimalKeywords || targetIdea.titleSuggestions || targetIdea.aiCompetitiveAngle)) { 
-        setSelectedIdeaForScript(targetIdea);
-        setShowScriptModal(true);
-    } else {
-        addFlashMessage('info', 'No generated content available for this idea yet. Please generate it first.');
-    }
   };
 
   const handleExpandIdea = async (ideaId: string) => {
@@ -666,8 +621,6 @@ const App: React.FC = () => {
                           onUpdateIdea={handleUpdateIdea}
                           onDeleteIdea={handleDeleteIdea}
                           onGenerateKeywords={handleGenerateKeywords}
-                          onGenerateScriptAndInstructions={handleGenerateScriptAndInstructions}
-                          onShowScriptModal={handleShowScriptModal}
                           onExpandIdea={handleExpandIdea}
                           onShowYouTubeValidation={handleShowYouTubeValidation}
                           onGenerateTitleSuggestions={handleGenerateTitleSuggestions}
@@ -680,13 +633,7 @@ const App: React.FC = () => {
         )}
       </main>
 
-      {selectedIdeaForScript && (
-        <ScriptViewerModal
-          isOpen={showScriptModal}
-          onClose={() => { setShowScriptModal(false); setSelectedIdeaForScript(null); }}
-          idea={selectedIdeaForScript}
-        />
-      )}
+      {/* ScriptViewerModal removed */}
 
       {selectedIdeaForYouTube && (
         <YouTubeViewerModal
