@@ -182,7 +182,7 @@ While aware of these high-RPM areas, your primary focus MUST be guided by the us
 Based on the interpreted core topic (derived from user inputs and validated with Google Search), provide a concise strategic recommendation. 
 Crucially, include 1-2 brief, specific examples of supporting data or search insights from Google Search that led to this recommendation.
 Identify high-potential niches, specific apps/software, and video types (e.g., 'beginner guides', 'troubleshooting') that exhibit high search volume potential, high RPMs, and truly evergreen demand, informed by Google Search. 
-Format as: "STRATEGY_GUIDANCE: [Your precise, actionable strategic advice. Example: 'Google Search confirms high interest in using Claude for automating video editing workflows (e.g., search volume for "Claude video subtitle generator" has tripled in 3 months; top tutorials are outdated). Focus on step-by-step tutorials for specific tasks like auto-generating subtitles or rough cuts.']"
+Format as: "STRATEGY_GUIDANCE: [Your precise, actionable strategic advice. Example: 'Google Search confirms high interest in using Claude for automating video editing workflows (e.g., search volume for "Claude video subtitle generator" has tripled in 3 months; top content is outdated). Focus on step-by-step tutorials for specific tasks like auto-generating subtitles or rough cuts.']"
 
 **Phase 2: Specific Video Ideas with Optimal Keywords & Rationale (7-10 ideas)**
 For each video title (related to the core topic):
@@ -284,6 +284,179 @@ Do NOT use numbering or bullet points for ideas/keywords/rationales. Each part o
     throw new Error('An unknown error occurred while generating ideas with Gemini.');
   }
 };
+
+export const generateVideoScriptAndInstructions = async (
+  ideaTitle: string,
+  niche: string,
+  appSoftware: string,
+  targetLengthMinutes: number,
+  existingKeywords?: string[],
+  competitorInsights?: string // This would be derived from aiCompetitiveAngle
+): Promise<{ script: string; videoInstructions: string; suggestedResources: string[] }> => {
+  if (shouldUseMockData) {
+    console.warn("Gemini (generateVideoScriptAndInstructions): Using mock data due to API key issue.");
+    await new Promise(resolve => setTimeout(resolve, 800));
+    const mockScript = `
+**Part 1: Video Script**
+
+**(Intro - 15 seconds)**
+In today's video, I'm going to teach you how to ${ideaTitle.toLowerCase()} using ${appSoftware || 'the best tools'} for the ${niche} niche! This is super useful for [mention a common benefit]. Let's dive in!
+
+**(Main Content - Step 1)**
+First, you'll need to [mock step 1 action, e.g., open ${appSoftware || 'the application'}]. Make sure you [mention a key detail for step 1].
+
+**(Main Content - Step 2)**
+Next, [mock step 2 action, e.g., navigate to the 'Settings' menu]. You'll see an option for [mention a UI element].
+
+**(Main Content - Mid-roll engage - if targetLengthMinutes > 3)**
+Quick pause! If you're finding this tutorial helpful, hit that like button and subscribe for more content like this. It really helps the channel!
+
+**(Main Content - Step 3)**
+Then, [mock step 3 action, e.g., adjust the 'Quality' settings to High]. This ensures your output looks great.
+
+**(Tips - if applicable)**
+A quick tip: always save your work frequently!
+
+**(Conclusion - 20 seconds)**
+And there you have it! That's how you can easily ${ideaTitle.toLowerCase()}. If you have questions, drop them in the comments. Thanks for watching, and I'll see you next time!
+
+**Part 2: Video Production Instructions**
+
+- For OBS: Use a clean desktop background. Ensure ${appSoftware || 'the application'} window is clearly visible.
+- Zoom in on important UI elements or menu clicks.
+- Use on-screen text annotations for key commands or shortcuts.
+- Maintain an enthusiastic but clear vocal pace.
+- Edit out long pauses or mistakes.
+
+**Part 3: Suggested Script Resources**
+
+- https://mockresource.com/docs/${appSoftware ? appSoftware.toLowerCase().replace(/\s/g, '-') : 'general-topic'}
+- https://anothermock.com/tutorials/${niche.toLowerCase().replace(/\s/g, '-')}-guide
+`;
+    return {
+        script: sanitizeAIResponseText(mockScript.match(/\*\*Part 1: Video Script\*\*\s*([\s\S]*?)(?=\*\*Part 2: Video Production Instructions\*\*|$)/i)?.[1]?.trim() || "Mock script error")!,
+        videoInstructions: sanitizeAIResponseText(mockScript.match(/\*\*Part 2: Video Production Instructions\*\*\s*([\s\S]*?)(?=\*\*Part 3: Suggested Script Resources\*\*|$)/i)?.[1]?.trim() || "Mock instructions error")!,
+        suggestedResources: (mockScript.match(/\*\*Part 3: Suggested Script Resources\*\*\s*([\s\S]*)/i)?.[1]?.trim()?.split('\n').map(r => r.replace(/^- /, '').trim()).filter(r => r.startsWith("http")) || ["https://mockresource.com/error"])
+                            .map(r => sanitizeAIResponseText(r)!)
+    };
+  }
+
+  if (!ai) {
+    console.error("Gemini (generateVideoScriptAndInstructions): AI SDK not initialized.");
+    throw new Error("Gemini AI SDK is not initialized. Check API_KEY configuration.");
+  }
+
+  const exampleScript1 = `
+Example Script Style 1 (Discord/Jockey Music):
+In today's video I'm going to teach you how to play YouTube music in Discord... [rest of user's Discord script example] ...happy listening and I'll see you in the next one.
+  `;
+  const exampleScript2 = `
+Example Script Style 2 (MS Word Product Key):
+In today's video I'm going to teach you how to find your Microsoft Word product key... [rest of user's Word script example] ...for more useful guides and tips.
+  `;
+
+  const systemInstruction = `You are an expert YouTube scriptwriter specializing in creating clear, concise, and actionable 'quick and dirty' OBS Studio style tutorial scripts. Your scripts must be engaging and directly address the user's need as outlined in the video title. Maintain a direct, instructional, and slightly enthusiastic tone. Avoid fluff, overly conversational intros/outros, or unnecessary empathetic statements. Get straight to the point. Assume the audience wants to learn quickly and efficiently.`;
+
+  let prompt = `
+Video Title/Idea: "${ideaTitle}"
+Niche: "${niche}"
+App/Software Focus: ${appSoftware ? `"${appSoftware}"` : "Not specified, focus on general niche topic"}
+Target Video Length: Approximately ${targetLengthMinutes} minutes.
+${existingKeywords && existingKeywords.length > 0 ? `Relevant Keywords to Incorporate: ${existingKeywords.join(', ')}\n` : ''}
+${competitorInsights ? `Strategic Angle/Competitor Insights: ${competitorInsights}\n` : "No specific competitor data provided; focus on creating a strong foundational script based on the title and niche.\n"}
+
+**Mandatory Script Structure & Content (Emulate user-provided examples):**
+1.  **Hook & Introduction (First 15-30 seconds of script time):**
+    *   Start IMMEDIATELY: "In today's video, I'm going to teach/show you how to [Core Task from Video Title]."
+    *   Briefly (1-2 sentences) explain the value/benefit: "This is useful because..." or "This will help you..." (e.g., "...enhance your Discord experience...", "...a fantastic way to elevate your server's atmosphere...").
+2.  **Main Content (Step-by-Step Instructions):**
+    *   Break down the process into clear, logically sequenced steps.
+    *   For each step: Clearly state the action (e.g., "First, navigate to...", "Next, click on...", "Now, type...").
+    *   Provide brief context or explanation for *why* this step is necessary if not obvious.
+    *   Include illustrative examples where appropriate.
+    *   **Mid-Roll Engagement Prompt (If script is for >3 minutes):** After a few key steps, insert a brief prompt like: "If you're finding this helpful, consider subscribing for more tutorials like this!" or "Quick pause: let me know in the comments if you've tried this before!"
+3.  **Tips/Troubleshooting (Optional but Recommended):** Briefly mention 1-2 common pitfalls or useful tips related to the process, as seen in the "MS Word" example ("Here are a few additional tips...").
+4.  **Conclusion & Call to Action (Last 15-30 seconds of script time):**
+    *   Quick recap: "And there you have it! That's how you [Core Task]." or "That wraps up our guide..."
+    *   Encourage engagement: "If you have any questions, drop them in the comments below."
+    *   Suggest next steps or related content (optional): "Check out my other video on [Related Topic] if you're interested."
+    *   Sign off: "Thanks for watching, and I'll see you in the next one!" or "Happy listening!"
+
+**Output Requirements (Strictly Follow):**
+*   Pace the script to fit the **Target Video Length**.
+*   Write as if spoken directly to the camera for an OBS Studio style screen recording.
+*   Use Google Search to inform content, especially if needing specific examples or details related to the app/software or niche.
+*   Output three distinct parts, CLEARLY LABELED as follows:
+    \`\`\`
+    **Part 1: Video Script**
+    [Your full video script here, following the structure above]
+
+    **Part 2: Video Production Instructions**
+    [Practical tips for OBS screen recording for THIS SPECIFIC SCRIPT: e.g., "Zoom in on the Discord 'App Directory' button when mentioned.", "Clearly show the 'jockey music' search bar interaction.", "Use on-screen text to highlight the command to play music.", "Keep a steady, easy-to-follow pace during the steps."]
+
+    **Part 3: Suggested Script Resources**
+    [If Google Search identifies relevant documentation, tools, or assets related to ${appSoftware || niche}, list their URIs here. If not, state "No specific external resources identified by search for this topic."]
+    \`\`\`
+
+**CRITICAL: Adhere to the style and directness of the provided examples.**
+${exampleScript1}
+${exampleScript2}
+`;
+
+  try {
+    const response: GenerateContentResponse = await ai.models.generateContent({
+      model: 'gemini-2.5-flash-preview-04-17',
+      contents: prompt,
+      config: {
+        systemInstruction: systemInstruction,
+        tools: [{ googleSearch: {} }],
+        temperature: 0.6, // Slightly lower for more factual script
+        topP: 0.9,
+        topK: 40,
+      },
+    });
+
+    const rawFullText = handleGeminiResponse(response, 'Script Generation');
+
+    if (!rawFullText) {
+      console.warn("Gemini API returned empty text response for script generation.");
+      return { script: "Error: Empty response from AI.", videoInstructions: "", suggestedResources: [] };
+    }
+    
+    // Regex to find parts, case-insensitive for headings, flexible with optional asterisks
+    const scriptMatch = rawFullText.match(/\*\*Part 1: Video Script\**\s*([\s\S]*?)(?=\*\*Part 2: Video Production Instructions\**|$)/i);
+    const instructionsMatch = rawFullText.match(/\*\*Part 2: Video Production Instructions\**\s*([\s\S]*?)(?=\*\*Part 3: Suggested Script Resources\**|$)/i);
+    const resourcesMatch = rawFullText.match(/\*\*Part 3: Suggested Script Resources\**\s*([\s\S]*)/i);
+
+    const scriptContent = scriptMatch?.[1]?.trim() ?? "AI failed to generate script content in the expected format.";
+    const instructionsContent = instructionsMatch?.[1]?.trim() ?? "AI failed to generate production instructions in the expected format.";
+    let resourcesContentRaw = resourcesMatch?.[1]?.trim() ?? "No specific external resources identified by search for this topic.";
+    
+    let suggestedResourceList: string[] = [];
+    if (resourcesContentRaw && !resourcesContentRaw.toLowerCase().includes("no specific external resources")) {
+        suggestedResourceList = resourcesContentRaw.split('\n')
+            .map(line => line.replace(/^- /, '').trim())
+            .filter(line => line.startsWith("http://") || line.startsWith("https://"));
+    }
+
+
+    return {
+      script: sanitizeAIResponseText(scriptContent), // Final sanitization for each part
+      videoInstructions: sanitizeAIResponseText(instructionsContent),
+      suggestedResources: suggestedResourceList.map(r => sanitizeAIResponseText(r)),
+    };
+
+  } catch (error) {
+    console.error('Error calling Gemini API for script generation:', error);
+    const message = error instanceof Error ? error.message : 'Unknown error.';
+    return {
+      script: `Error generating script: ${message}`,
+      videoInstructions: "Could not generate production instructions due to an error.",
+      suggestedResources: [],
+    };
+  }
+};
+
 
 export const expandIdeaIntoRelatedIdeas = async (
   ideaText: string,
