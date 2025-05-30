@@ -1,9 +1,10 @@
 
 
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { VideoIdea, YouTubeVideoResult, UntappedScore } from '../types';
 import { LoadingSpinner } from './ui/LoadingSpinner';
 import { Button } from './ui/Button';
+import { Select } from './ui/Select'; // Assuming Select can be used for sorting
 
 interface YouTubeViewerModalProps {
   isOpen: boolean;
@@ -11,6 +12,8 @@ interface YouTubeViewerModalProps {
   idea: VideoIdea | null;
   onForceRefreshValidation: (ideaId: string, forceRefresh: boolean) => void;
 }
+
+type SortOption = 'viewCountDesc' | 'publishedAtDesc' | 'relevance';
 
 const UntappedScoreDisplay: React.FC<{ score?: UntappedScore, summary?: string }> = ({ score, summary }) => {
   if (!score || score === 'Not Assessed') {
@@ -84,17 +87,52 @@ const YouTubeVideoCard: React.FC<{ video: YouTubeVideoResult }> = ({ video }) =>
 
 
 export const YouTubeViewerModal: React.FC<YouTubeViewerModalProps> = ({ isOpen, onClose, idea, onForceRefreshValidation }) => {
+  const [sortOrder, setSortOrder] = useState<SortOption>('viewCountDesc');
+
   if (!isOpen || !idea) return null;
 
   const isLoadingYouTubeResults = idea?.isYouTubeLoading ?? false;
-  const results = idea?.youtubeResults || [];
+  const rawResults = idea?.youtubeResults || [];
   const aiAngle = idea?.aiCompetitiveAngle || null;
+
+  const parseViewCount = (viewCountText?: string): number => {
+    if (!viewCountText) return 0;
+    const cleanedText = viewCountText.toLowerCase().replace(/views|,/g, '').trim();
+    let multiplier = 1;
+    if (cleanedText.endsWith('k')) {
+      multiplier = 1000;
+    } else if (cleanedText.endsWith('m')) {
+      multiplier = 1000000;
+    } else if (cleanedText.endsWith('b')) {
+      multiplier = 1000000000;
+    }
+    const num = parseFloat(cleanedText.replace(/[kmbt]/, ''));
+    return isNaN(num) ? 0 : num * multiplier;
+  };
+  
+  const sortedResults = useMemo(() => {
+    const resultsCopy = [...rawResults];
+    if (sortOrder === 'viewCountDesc') {
+      return resultsCopy.sort((a, b) => parseViewCount(b.viewCountText) - parseViewCount(a.viewCountText));
+    }
+    if (sortOrder === 'publishedAtDesc') {
+      return resultsCopy.sort((a, b) => (b.publishedAtDate?.getTime() || 0) - (a.publishedAtDate?.getTime() || 0));
+    }
+    return resultsCopy; // Default 'relevance' (original order from API)
+  }, [rawResults, sortOrder]);
+
 
   const handleRefresh = () => {
     if (idea) {
         onForceRefreshValidation(idea.id, true);
     }
   };
+  
+  const sortOptions: { value: SortOption; label: string }[] = [
+    { value: 'relevance', label: 'Sort by Relevance' },
+    { value: 'viewCountDesc', label: 'Sort by Views (High to Low)' },
+    { value: 'publishedAtDesc', label: 'Sort by Newest First' },
+  ];
 
   return (
     <div 
@@ -129,15 +167,28 @@ export const YouTubeViewerModal: React.FC<YouTubeViewerModalProps> = ({ isOpen, 
               {aiAngle && aiAngle !== 'Analyzing...' && (
                 <div className="my-4 p-4 rounded-lg border border-purple-500/40 bg-purple-700/20 glass-card-subtle animate-fadeIn">
                   <h3 className="text-lg font-semibold text-purple-300 mb-2">AI Strategic Angle & Insights:</h3>
-                  <pre className="text-sm text-purple-200/90 whitespace-pre-wrap leading-relaxed">{aiAngle.replace(/^AI STRATEGIC ANGLE:/i, '').trim()}</pre>
+                  {/* Render AI angle text in a div with pre-wrap for better formatting control */}
+                  <div className="text-sm text-purple-200/90 whitespace-pre-wrap leading-relaxed">
+                    {aiAngle.replace(/^AI STRATEGIC ANGLE:/i, '').trim()}
+                  </div>
                 </div>
               )}
 
-              {results.length > 0 ? (
+              {sortedResults.length > 0 ? (
                 <div className="space-y-5">
-                  <h3 className="text-lg font-semibold text-sky-200 mb-1">Similar YouTube Videos:</h3>
-                  {results.map((video, index) => (
-                    <div key={video.videoId} className="animate-fadeIn" style={{animationDelay: `${index * 0.07}s`}}>
+                  <div className="flex justify-between items-center mb-3">
+                    <h3 className="text-lg font-semibold text-sky-200">Similar YouTube Videos:</h3>
+                    <Select
+                        id="youtubeSortSelect"
+                        options={sortOptions}
+                        value={sortOrder}
+                        onChange={(e) => setSortOrder(e.target.value as SortOption)}
+                        className="!py-2 !text-sm !w-auto !min-w-[180px]"
+                        containerClassName="w-auto"
+                    />
+                  </div>
+                  {sortedResults.map((video, index) => (
+                    <div key={video.videoId + '-' + index} className="animate-fadeIn" style={{animationDelay: `${index * 0.07}s`}}>
                         <YouTubeVideoCard video={video} />
                     </div>
                   ))}

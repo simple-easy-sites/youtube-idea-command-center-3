@@ -4,18 +4,18 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>YouTube Idea Command Center</title>
-  <!-- <script src="https://cdn.tailwindcss.com"></script> REMOVED Tailwind CDN -->
+  <link rel="icon" href="/favicon.ico" type="image/x-icon">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/index.css"> <!-- ADDED local CSS -->
+  <link rel="stylesheet" href="/index.css"> 
   <style>
     :root {
-      --base-bg-start: #000000; /* Pure black base */
-      --base-bg-end: #000000;   /* Pure black base */
+      --base-bg-start: #000000; 
+      --base-bg-end: #000000;   
       
-      --glass-bg-main-start: rgba(30, 41, 59, 0.12); /* Ultra-subtle transparency, slightly adjusted from PRD for visibility */
-      --glass-bg-main-end: rgba(20, 28, 45, 0.20);   /* Darker subtle end */
+      --glass-bg-main-start: rgba(30, 41, 59, 0.12); 
+      --glass-bg-main-end: rgba(20, 28, 45, 0.20);   
       
       --glass-bg-subtle-start: rgba(35, 45, 65, 0.10); 
       --glass-bg-subtle-end: rgba(15, 20, 35, 0.18);
@@ -28,23 +28,23 @@
       --text-secondary: #a0aec0; 
       --text-tertiary: #718096; 
 
-      --accent-glow: #007AFF; /* Apple blue for accent */
-      --accent-glow-transparent: rgba(0, 122, 255, 0.4); /* Slightly less intense than PRD for better blend */
+      --accent-glow: #007AFF; 
+      --accent-glow-transparent: rgba(0, 122, 255, 0.4); 
 
-      --priority-glow-color: rgba(255, 215, 0, 0.9); /* Gold, intense */
+      --priority-glow-color: rgba(255, 215, 0, 0.9); 
       --priority-glow-soft: rgba(255, 215, 0, 0.5);
 
-      --shadow-color-base: rgba(0, 0, 0, 0.75); /* Deep shadow for floating effect */
+      --shadow-color-base: rgba(0, 0, 0, 0.75); 
       --shadow-color-hover: rgba(0, 0, 0, 0.9);
       
-      --scrollbar-thumb: #374151; /* gray-700 */
-      --scrollbar-thumb-hover: #4b5563; /* gray-600 */
-      --scrollbar-track: #000000; /* Pure black track */
+      --scrollbar-thumb: #374151; 
+      --scrollbar-thumb-hover: #4b5563; 
+      --scrollbar-track: #000000; 
     }
 
     body {
       font-family: 'Inter', sans-serif;
-      background-color: var(--base-bg-start); /* Updated to pure black */
+      background-color: var(--base-bg-start); 
       color: var(--text-primary);
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
@@ -59,6 +59,39 @@
       display: flex;
       flex-direction: column;
     }
+    
+    /* Ensure input and select text is readable */
+    input[type="text"],
+    input[type="number"],
+    input[type="email"],
+    input[type="password"],
+    input[type="search"],
+    input[type="tel"],
+    input[type="url"],
+    textarea,
+    select {
+      color: var(--text-primary) !important; /* Force primary text color */
+      -webkit-text-fill-color: var(--text-primary) !important; /* For Safari */
+    }
+
+    select option {
+        background-color: var(--base-bg-end) !important;
+        color: var(--text-primary) !important;
+    }
+    
+    /* Styling for placeholders to be less prominent but still readable */
+    input::placeholder,
+    textarea::placeholder {
+        color: var(--text-tertiary) !important;
+        opacity: 0.8 !important; /* Ensure placeholder is not too bright */
+    }
+    
+    select:disabled, input:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        background-color: rgba(55, 65, 81, 0.3) !important; /* More noticeable disabled state for selects */
+    }
+
 
     .diagnostic-loading-message {
       display: flex;
@@ -68,14 +101,14 @@
       text-align: center;
       padding: 40px;
       font-size: 1.2rem;
-      color: #FFF; /* White text */
-      height: 100%; /* Take full height of parent */
+      color: #FFF; 
+      height: 100%; 
       flex-grow: 1;
     }
     .diagnostic-loading-message strong {
         font-size: 1.5rem;
         margin-bottom: 15px;
-        color: #FFCC00; /* Yellow for emphasis */
+        color: #FFCC00; 
     }
      .diagnostic-loading-message p {
         margin-bottom: 10px;
@@ -86,38 +119,36 @@
         padding: 2px 6px;
         border-radius: 4px;
         font-family: monospace;
-        color: #FFA500; /* Orange for code */
+        color: #FFA500; 
      }
 
 
     .glass-card {
-      background-color: var(--glass-bg-main-start); /* Using background-color as base per PRD */
-      /* background-image: linear-gradient(140deg, var(--glass-bg-main-start) 0%, var(--glass-bg-main-end) 100%); */
-      backdrop-filter: blur(35px) saturate(250%); /* Maximal blur and vibrancy per PRD */
+      background-color: var(--glass-bg-main-start); 
+      backdrop-filter: blur(35px) saturate(250%); 
       -webkit-backdrop-filter: blur(35px) saturate(250%);
       border: 1px solid var(--glass-border-color);
-      box-shadow: 0 18px 70px 0 var(--shadow-color-base),  /* Deep, expansive shadow per PRD */
+      box-shadow: 0 18px 70px 0 var(--shadow-color-base),  
                   0 0 0 1px var(--glass-border-inset) inset; 
-      transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94); /* Smooth, energetic ease-out per PRD */
-      border-radius: 12px; /* PRD specified radius */
+      transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94); 
+      border-radius: 12px; 
     }
 
     .glass-card:hover {
-      transform: translateY(-5px); /* More pronounced lift per PRD */
-      box-shadow: 0 25px 90px 0 var(--shadow-color-hover), /* Even darker, wider shadow per PRD */
+      transform: translateY(-5px); 
+      box-shadow: 0 25px 90px 0 var(--shadow-color-hover), 
                   0 0 0 1px var(--glass-border-highlight) inset;
       border-color: var(--glass-border-highlight);
     }
     
     .glass-card-subtle { 
       background-color: var(--glass-bg-subtle-start);
-      /* background-image: linear-gradient(140deg, var(--glass-bg-subtle-start) 0%, var(--glass-bg-subtle-end) 100%); */
       backdrop-filter: blur(25px) saturate(180%);
       -webkit-backdrop-filter: blur(25px) saturate(180%);
       border: 1px solid var(--glass-border-color);
       box-shadow: 0 8px 25px -8px rgba(0,0,0,0.5), 
                   0 0 0 1px var(--glass-border-inset) inset;
-      border-radius: 10px; /* Consistent with other cards or slightly less */
+      border-radius: 10px; 
     }
      .glass-card-subtle:hover {
         box-shadow: 0 12px 30px -10px rgba(0,0,0,0.7), 
@@ -125,7 +156,7 @@
         border-color: var(--glass-border-highlight);
      }
 
-    @keyframes pulse-glow { /* Renamed from pulse-priority-glow for clarity, if used for other glows */
+    @keyframes pulse-glow { 
       0% { 
         box-shadow: 0 0 30px 8px var(--priority-glow-color), 
                     0 0 60px 15px var(--priority-glow-soft),
@@ -134,28 +165,25 @@
         transform: scale(1);
       }
       100% { 
-        box-shadow: 0 0 45px 12px var(--priority-glow-color),  /* Super intense gold glow from PRD */
+        box-shadow: 0 0 45px 12px var(--priority-glow-color),  
                     0 0 80px 20px var(--priority-glow-soft),
-                    0 18px 70px 0 var(--shadow-color-base), /* Retain base shadow */
+                    0 18px 70px 0 var(--shadow-color-base), 
                     0 0 0 1px var(--priority-glow-color) inset;
         transform: scale(1.01); 
       }
     }
 
     .priority-high-glow {
-      animation: pulse-glow 2s infinite alternate; /* Uses the renamed keyframe */
+      animation: pulse-glow 2s infinite alternate; 
       border-color: var(--priority-glow-color) !important;
-      /* Initial box-shadow to match animation start, PRD specific */
        box-shadow: 0 0 45px 12px var(--priority-glow-color), 
                   0 18px 70px 0 var(--shadow-color-base);
     }
     
-    /* Subtle glowing borders using box-shadow */
     .status-new-border { box-shadow: -6px 0 12px -4px rgba(56, 189, 248, 0.5), inset 4px 0 0 0 #38bdf8; border-left: none !important;}
     .status-prioritized-border { box-shadow: -6px 0 12px -4px rgba(255, 215, 0, 0.6), inset 4px 0 0 0 var(--priority-glow-color); border-left: none !important;}
     .status-in-progress-border { box-shadow: -6px 0 12px -4px rgba(167, 139, 250, 0.5), inset 4px 0 0 0 #a78bfa; border-left: none !important;}
     .status-video-made-border { box-shadow: -6px 0 12px -4px rgba(74, 222, 128, 0.5), inset 4px 0 0 0 #4ade80; border-left: none !important;}
-    /* .status-archived-border { box-shadow: -6px 0 12px -4px rgba(156, 163, 175, 0.4), inset 4px 0 0 0 #9ca3af; border-left: none !important;} */ /* Removed */
     .status-discarded-border { box-shadow: -6px 0 12px -4px rgba(244, 114, 182, 0.5), inset 4px 0 0 0 #f472b6; border-left: none !important;}
 
 
@@ -164,25 +192,25 @@
       height: 12px;
     }
     ::-webkit-scrollbar-track {
-      background: var(--scrollbar-track); /* Pure black track per PRD */
+      background: var(--scrollbar-track); 
       border-radius: 10px;
     }
     ::-webkit-scrollbar-thumb {
-      background: var(--scrollbar-thumb); /* gray-700 per PRD */
+      background: var(--scrollbar-thumb); 
       border-radius: 10px;
       border: 3px solid transparent; 
       background-clip: content-box;
     }
     ::-webkit-scrollbar-thumb:hover {
-      background: var(--scrollbar-thumb-hover); /* gray-600 per PRD */
+      background: var(--scrollbar-thumb-hover); 
     }
 
     .apple-focus-glow:focus,
     input:focus, select:focus, textarea:focus, button:focus-visible {
         outline: none;
         border-color: var(--accent-glow) !important;
-        box-shadow: 0 0 0 4px var(--accent-glow-transparent), /* Stronger glow per PRD */
-                    inset 0 1px 4px rgba(0,0,0,0.2), /* Subtle inset per PRD */
+        box-shadow: 0 0 0 4px var(--accent-glow-transparent), 
+                    inset 0 1px 4px rgba(0,0,0,0.2), 
                     0 1px 3px rgba(0,0,0,0.15); 
     }
     button:focus { outline: none; }
@@ -203,7 +231,7 @@
       animation: slideInFromTop 0.7s cubic-bezier(0.165, 0.84, 0.44, 1) forwards;
     }
     
-    @keyframes slideInAndFade { /* For modals */
+    @keyframes slideInAndFade { 
         from {
             opacity: 0;
             transform: translateY(30px) scale(0.95);
@@ -251,21 +279,18 @@
     }
 
   </style>
-<!-- Import map can be removed if Vite handles these dependencies from package.json -->
-<!-- 
 <script type="importmap">
 {
   "imports": {
     "react": "https://esm.sh/react@^19.1.0",
     "react-dom/": "https://esm.sh/react-dom@^19.1.0/",
     "react/": "https://esm.sh/react@^19.1.0/",
-    "@google/genai": "https://esm.sh/@google/genai@^1.1.0",
+    "@google/genai": "https://esm.sh/@google/genai@^1.2.0",
     "vite": "https://esm.sh/vite@^6.3.5",
     "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^4.5.0"
   }
 }
 </script>
--->
 </head>
 <body class="antialiased">
   <div id="root">

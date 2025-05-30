@@ -14,6 +14,14 @@ const modelName = 'gemini-2.5-flash-preview-04-17';
 
 const shouldUseMockData = !API_KEY || API_KEY === "MISSING_API_KEY_WILL_FAIL" || API_KEY === "YOUR_ACTUAL_GEMINI_API_KEY_HERE";
 
+// Helper to remove common non-printable characters except standard whitespace
+const sanitizeAIResponseText = (text: string | undefined): string => {
+    if (!text) return '';
+    // Allow letters, numbers, common punctuation, and standard whitespace (space, tab, newline, carriage return)
+    // Remove characters that might be problematic in UI rendering, especially from copy-paste or unusual encodings.
+    return text.replace(/[^\x20-\x7E\s\t\n\r]/g, '');
+};
+
 
 export const generateIdeasWithGemini = async (
   userQuery: string, 
@@ -122,7 +130,8 @@ Do NOT use numbering or bullet points for ideas/keywords/rationales. Each part o
         }
     });
     
-    const text = response.text; 
+    const rawText = response.text; 
+    const text = sanitizeAIResponseText(rawText);
     if (!text) {
       console.warn("Gemini API returned empty text response for idea generation.");
       return { ideas: [], strategicGuidance: null };
@@ -265,7 +274,9 @@ Begin Generation:
     });
 
     const rawText = response.text;
-     if (!rawText) {
+    const sanitizedRawText = sanitizeAIResponseText(rawText);
+
+     if (!sanitizedRawText) {
         console.warn("Gemini API returned empty text response for script generation.");
         return { script: 'Script generation failed: Empty response from AI.', instructions: 'Instructions generation failed.', resources: [] };
     }
@@ -274,17 +285,17 @@ Begin Generation:
     let instructions = 'Instructions generation failed: Could not parse Part 2.';
     let resources: string[] = [];
 
-    const scriptMatch = rawText.match(/\*\*Part 1: Video Script\*\*\s*([\s\S]*?)(?=\*\*Part 2: Video Production Instructions\*\*|$)/);
+    const scriptMatch = sanitizedRawText.match(/\*\*Part 1: Video Script\*\*\s*([\s\S]*?)(?=\*\*Part 2: Video Production Instructions\*\*|$)/);
     if (scriptMatch && scriptMatch[1]) {
         script = scriptMatch[1].trim();
     }
 
-    const instructionsMatch = rawText.match(/\*\*Part 2: Video Production Instructions\*\*\s*([\s\S]*?)(?=\*\*Part 3: Suggested Resources\*\*|$)/);
+    const instructionsMatch = sanitizedRawText.match(/\*\*Part 2: Video Production Instructions\*\*\s*([\s\S]*?)(?=\*\*Part 3: Suggested Resources\*\*|$)/);
     if (instructionsMatch && instructionsMatch[1]) {
         instructions = instructionsMatch[1].trim();
     }
 
-    const resourcesMatch = rawText.match(/\*\*Part 3: Suggested Resources\*\*\s*([\s\S]*)/);
+    const resourcesMatch = sanitizedRawText.match(/\*\*Part 3: Suggested Resources\*\*\s*([\s\S]*)/);
     if (resourcesMatch && resourcesMatch[1]) {
         resources = resourcesMatch[1].trim().split('\n')
                       .map(r => r.replace(/^(\* |- )/,'').trim()) 
@@ -311,34 +322,40 @@ export const expandIdeaIntoRelatedIdeas = async (
       await new Promise(resolve => setTimeout(resolve, 500));
       return [
           {
-            text: `[MOCK] Advanced Techniques for: "${ideaText.substring(0,30)}..."`,
-            keywords: [`advanced ${appSoftware || niche}`, `${ideaText.substring(0,10)} tricks`, `${niche} expert guide`]
+            text: `[MOCK] Advanced Techniques for: "${ideaText.substring(0,30)}..." using ${appSoftware || 'related tools'} in ${niche}. Focus: Hyper-specific example 1.`,
+            keywords: [`advanced ${appSoftware || niche}`, `${ideaText.substring(0,10)} expert tricks`, `${niche} pro guide`]
           },
           {
-            text: `[MOCK] Common Mistakes with ${appSoftware || 'this topic'} for "${ideaText.substring(0,20)}..."`,
-            keywords: [`${appSoftware || niche} mistakes`, `avoid ${ideaText.substring(0,10)} errors`, `${niche} common problems`]
+            text: `[MOCK] Troubleshooting rare error XYZ with ${appSoftware || 'this topic'} for "${ideaText.substring(0,20)}..." for niche users.`,
+            keywords: [`${appSoftware || niche} specific error XYZ`, `fix ${ideaText.substring(0,10)} rare problem`, `${niche} specific troubleshooting`]
           },
+           {
+            text: `[MOCK] How to use ${appSoftware || 'this tool'} to achieve [Hyper-Specific Task, e.g., 'automate window washing schedules'] within the ${niche} context.`,
+            keywords: [`${appSoftware || niche} for window washing`, `automate specific task ${niche}`, `unusual uses of ${appSoftware}`]
+          }
       ];
   }
   const prompt = `As a YouTube content strategist and keyword specialist, you've just created a video titled "${ideaText}" for the '${niche}' niche${appSoftware ? `, focusing on '${appSoftware}'` : ''}.
-Generate 5-7 highly specific, **granular, follow-up, or complementary video ideas** that naturally extend or cluster around this core topic. These should be distinct enough for their own videos and target specific long-tail search queries.
-For each new idea, also provide 3-5 **optimal, evergreen keywords** relevant to that specific sub-topic.
+The goal is to generate **5-7 hyper-specific, granular "niche-of-the-niche" follow-up video ideas**. These ideas should drill down into very specific sub-topics, user problems, or unique applications that are distinct enough for their own standalone videos and target long-tail search queries.
 
-Focus on:
-- Deeper dives into a single step from the main tutorial "${ideaText}".
-- Specific troubleshooting for a common issue within the main topic of "${ideaText}".
-- Advanced uses or hidden features related to "${ideaText}" ${appSoftware ? `or '${appSoftware}'` : ''}.
-- Comparison with similar tools relevant to the sub-topic.
-- Integration with other platforms or workflows related to "${ideaText}".
+Consider the following angles for generating hyper-specific ideas:
+-   **Ultra-Specific Problem Solving:** Focus on a *single, very specific problem* users might encounter related to "${ideaText}" or when using "${appSoftware}" for a task in the "${niche}" context. (e.g., If idea is "How to use ChatGPT for marketing," a hyper-specific idea might be "Fix 'ChatGPT Too Vague for Product Descriptions' Error with This Prompt Structure").
+-   **Niche Down the Application:** Take "${ideaText}" and apply it to an extremely specific scenario or sub-audience within the broader "${niche}". (e.g., If idea is "Learn Photoshop Basics," a hyper-specific idea might be "Photoshop for Miniature Painters: Cleaning Up Scanned Textures for Bases").
+-   **Unique Use Cases/Combinations:** Explore less obvious or unconventional applications of "${appSoftware}" or the concepts in "${ideaText}" within the "${niche}". (e.g., If idea is "Good Prompts for AI Art," a hyper-specific idea might be "AI Art Prompts for Generating historically accurate medieval food items").
+-   **Step-by-Step for One Micro-Feature:** If "${ideaText}" is a general tutorial, pick one tiny feature or sub-step and create a whole video around mastering just that.
+
+For each new hyper-specific idea, also provide 3-5 **optimal, evergreen keywords** relevant to that specific sub-topic.
 
 Return ONLY a list of video titles, each on a new line. After each video idea, on a new line, list its optimal keywords, comma-separated and prefixed with "KEYWORDS:". No numbering, no intro/outro.
 Example:
 Original Idea: How to Use Excel Pivot Tables
-Expanded Idea:
+Hyper-Specific Expanded Idea:
 Fix Excel Pivot Table 'Data Source Not Valid' Error with Mixed Data Types
 KEYWORDS: Excel pivot table error, fix pivot table data source, mixed data types Excel, Excel troubleshooting
-Advanced Excel Pivot Table Tricks for Analyzing Large Datasets
-KEYWORDS: advanced pivot tables, Excel data analysis, large datasets Excel, pivot table tips, Excel expert
+---
+Hyper-Specific Expanded Idea:
+Creating Dynamic Excel Pivot Table Reports for Monthly Sales Tracking in Small Retail
+KEYWORDS: dynamic pivot tables, Excel sales report, monthly sales tracking, Excel for retail, small business Excel
 `;
 
   try {
@@ -348,7 +365,9 @@ KEYWORDS: advanced pivot tables, Excel data analysis, large datasets Excel, pivo
         config: { temperature: 0.8, topP: 0.95, topK: 50 }
     });
 
-    const text = response.text; 
+    const rawText = response.text; 
+    const text = sanitizeAIResponseText(rawText);
+
     if (!text) {
         console.warn("Gemini API returned empty text response for idea expansion.");
         return [];
@@ -358,7 +377,7 @@ KEYWORDS: advanced pivot tables, Excel data analysis, large datasets Excel, pivo
     const lines = text.split('\n').map(l => l.trim()).filter(l => l);
     for (let i = 0; i < lines.length; i++) {
         const currentLine = lines[i];
-        if (currentLine.startsWith("KEYWORDS:")) continue; 
+        if (currentLine.startsWith("KEYWORDS:") || currentLine === "---") continue; 
 
         const ideaTitle = currentLine;
         let keywords: string[] = [];
@@ -366,7 +385,7 @@ KEYWORDS: advanced pivot tables, Excel data analysis, large datasets Excel, pivo
             keywords = lines[i+1].replace('KEYWORDS:', '').split(',').map(k => k.trim()).filter(k => k);
             i++; 
         }
-        if (ideaTitle.length > 10 && ideaTitle.length < 150) { 
+        if (ideaTitle.length > 10 && ideaTitle.length < 200) { // Increased max length for more descriptive hyper-specific titles
             expandedIdeasWithKeywords.push({ text: ideaTitle, keywords });
         }
     }
@@ -438,7 +457,8 @@ free Excel budget planner
       },
     });
 
-    const text = response.text; 
+    const rawText = response.text; 
+    const text = sanitizeAIResponseText(rawText);
     const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks as GroundingChunk[] | undefined;
 
     if (!text) {
@@ -528,7 +548,9 @@ Do NOT include any other text, preamble, or concluding remarks outside of this s
       }
     });
 
-    const text = response.text;
+    const rawText = response.text;
+    const text = sanitizeAIResponseText(rawText);
+
     if (!text) {
       console.warn("Gemini API returned empty text response for title suggestions.");
       return [];
@@ -561,59 +583,66 @@ Do NOT include any other text, preamble, or concluding remarks outside of this s
 
 export const analyzeYouTubeCompetitorsForAngles = async (
     ideaText: string,
-    competitorVideos: YouTubeVideoResult[] // Expecting richer competitor info now
+    competitorVideos: YouTubeVideoResult[] 
 ): Promise<string> => {
     if (shouldUseMockData) {
         console.warn("Gemini (analyzeYouTubeCompetitorsForAngles): Missing/placeholder VITE_API_KEY. Returning mock data.");
         await new Promise(resolve => setTimeout(resolve, 400));
-        if (competitorVideos.length === 0) return "AI STRATEGIC ANGLE: Mock: No competitor videos found. This topic seems wide open! Focus on a comprehensive beginner's guide, clearly dated for the current year.";
+        if (competitorVideos.length === 0) return "AI STRATEGIC ANGLE:\nOverall Assessment: Mock: No competitor videos found. This topic seems wide open!\nActionable Angles:\n*   Focus on a comprehensive beginner's guide, clearly dated for the current year (e.g., 2024).\n*   Highlight unique benefits or ease of use if applicable to the idea.\n*   Create a visually appealing thumbnail that stands out.";
         const mockComp = competitorVideos[0];
-        return `AI STRATEGIC ANGLE: Mock: Given competitors like "${mockComp.title}" (Views: ${mockComp.viewCountText}, Age: ${mockComp.publishedAtText}, Channel Subs: ${mockComp.channelSubscriberCountText}), consider a more up-to-date (2024) version for "${ideaText}". Also, explore a unique practical example not covered by others, especially if competitors have low subscriber counts but high views on similar topics.`;
+        return `AI STRATEGIC ANGLE:\nOverall Assessment: Mock: Given competitors like "${mockComp.title}" (Views: ${mockComp.viewCountText}, Age: ${mockComp.publishedAtText}, Channel Subs: ${mockComp.channelSubscriberCountText}), there's some existing content.\nActionable Angles:\n*   Consider an up-to-date (e.g., 2024) version for "${ideaText}" if competitor content is older.\n*   Explore a unique practical example or a niche application not covered by others.\n*   If competitors have low subscriber counts but high views on similar topics, it indicates strong demand; focus on higher quality production or clearer explanations.`;
     }
-    if (!API_KEY) return 'AI STRATEGIC ANGLE: API Key not configured. Cannot analyze competitors.';
+    if (!API_KEY) return 'AI STRATEGIC ANGLE:\nOverall Assessment: API Key not configured. Cannot analyze competitors.\nActionable Angles:\n*   Manually review competitor videos for gaps and opportunities.';
 
     const competitorInfo = competitorVideos
-      .map(vid => `- Title: "${vid.title}"\n  Description Snippet: "${vid.descriptionSnippet || 'N/A'}"\n  Views: ${vid.viewCountText}\n  Age: ${vid.publishedAtText}\n  Channel Subscribers: ${vid.channelSubscriberCountText || 'N/A'}`)
-      .slice(0, 7) // Analyze up to 7 competitors
+      .map(vid => `- Title: "${vid.title}"\n  Views: ${vid.viewCountText}\n  Age: ${vid.publishedAtText}\n  Channel Subscribers: ${vid.channelSubscriberCountText || 'N/A'}\n  Description Snippet: "${vid.descriptionSnippet || 'N/A'}"`)
+      .slice(0, 7) 
       .join('\n---\n');
 
     const prompt = `You are an expert YouTube Content Strategist.
 Your task is to analyze the provided competitor video data for the target video idea: "${ideaText}".
 
 Competitor Videos Data:
-${competitorInfo.length > 0 ? competitorInfo : "No competitor videos provided for analysis."}
+${competitorInfo.length > 0 ? competitorInfo : "No competitor videos found in the top search results."}
 
 Based on this data, provide:
-1.  **Overall Assessment (1-2 sentences):** Briefly summarize the competitive landscape. Is it crowded, sparse, dominated by old content, or are there videos from low-subscriber channels getting high views (indicating strong topic demand)?
-2.  **Actionable Strategic Angles (2-3 bullet points):** Suggest specific, actionable angles or improvements a new video on "${ideaText}" could focus on to differentiate itself and offer more value. Consider:
-    *   **Content Gaps/Depth:** Are there aspects competitor videos miss or only cover superficially?
-    *   **Freshness/Updates:** If existing videos are old, emphasize creating an up-to-date version.
-    *   **Unique Value Proposition:** How can the new video be clearer, more engaging, or solve a specific problem better? (e.g., "Focus on a hands-on tutorial if others are theoretical.")
-    *   **Niche Down:** Could targeting a specific sub-audience or use-case be beneficial? (e.g., "Create a guide specifically for [X audience] using [Tool] for [Y task]").
-    *   **Leverage View/Subscriber Discrepancies:** If videos from channels with few subscribers have high views, this signals strong interest. How can this be capitalized on?
+1.  **Overall Assessment (1-2 concise sentences):** Briefly summarize the competitive landscape.
+    *   Is it crowded, sparse, or dominated by old content?
+    *   Are there videos from channels with relatively low subscriber counts getting high views (this indicates strong organic topic demand)?
+    *   What is the general sentiment or quality of existing top videos?
+
+2.  **Actionable Strategic Angles (2-3 distinct bullet points):** Suggest specific, actionable angles or improvements a new video on "${ideaText}" could focus on to differentiate itself and offer more value. For each angle, be specific and explain *why* it's a good strategy based on the competitor data (or lack thereof).
+    *   **Content Gaps/Depth:** If competitors miss key aspects or only cover them superficially, suggest covering these. (e.g., "Dive deeper into [specific sub-topic] which current videos only touch on.")
+    *   **Freshness/Updates:** If existing videos are old (e.g., >1-2 years), emphasize creating an up-to-date version. (e.g., "Create an 'Update for [Current Year]' guide, as most top videos are from [Year].")
+    *   **Unique Value Proposition:** How can the new video be clearer, more engaging, solve a specific problem better, or offer a unique perspective? (e.g., "Focus on a hands-on, project-based tutorial if others are mostly theoretical," or "Offer a 'pro tips' angle if beginner content is saturated.")
+    *   **Niche Down/Audience Focus:** Could targeting a specific sub-audience or use-case be beneficial? (e.g., "Create a guide specifically for [e.g., small business owners] using [Tool] for [Task related to IdeaText]").
+    *   **Leverage View/Subscriber Discrepancies:** If videos from channels with few subscribers have high views, this signals strong topic interest and potentially lower quality competition. How can this be capitalized on? (e.g., "Multiple smaller channels achieve high views, indicating strong topic demand. A high-quality, comprehensive video could dominate.")
+    *   **Title/Thumbnail Strategy Hint:** Briefly suggest how the title/thumbnail could reflect the unique angle. (e.g., "Angle your title to highlight the 'for [Specific Audience]' aspect.")
 
 Output Format:
-Start with "AI STRATEGIC ANGLE:"
-Then "Overall Assessment:" followed by your assessment.
-Then "Actionable Angles:" followed by bulleted suggestions.
+Start with "AI STRATEGIC ANGLE:" (all caps).
+Then, on a new line, "Overall Assessment:" followed by your assessment.
+Then, on a new line, "Actionable Angles:" followed by bulleted suggestions (using '*' for bullets).
 
 Example:
 AI STRATEGIC ANGLE:
-Overall Assessment: The topic has several videos, but many are over a year old and focus on broad overviews. One video from a channel with only 5K subscribers has 100K views, indicating high interest in practical application.
+Overall Assessment: The topic has several videos, but many are over two years old and focus on broad overviews. One video from a channel with only 5K subscribers has 100K views, indicating high interest in practical application.
 Actionable Angles:
-*   Develop a comprehensive, up-to-date (current year) tutorial focusing on practical application with a real-world project example.
-*   If competitors are mostly theoretical, create a step-by-step, hands-on guide showing the "how-to" in detail.
-*   Address a common pain point mentioned in competitor comments (if known) or a frequently asked question not well-covered by existing videos.
+*   Develop a comprehensive, up-to-date ([Current Year]) tutorial focusing on practical application with a real-world project example. Existing content lacks this depth.
+*   If competitors are mostly theoretical, create a step-by-step, hands-on guide showing the "how-to" in detail for a specific challenging aspect of "${ideaText}".
+*   Target beginners specifically if current videos assume too much prior knowledge. Title could be: "${ideaText} - The ULTIMATE Beginner's Guide ([Current Year])".
 `;
 
     try {
         const response = await ai.models.generateContent({
             model: modelName,
             contents: prompt,
-            config: { temperature: 0.65, topP: 0.9, topK: 40 }
+            config: { temperature: 0.68, topP: 0.92, topK: 45 }
         });
         
-        const text = response.text;
+        const rawText = response.text;
+        const text = sanitizeAIResponseText(rawText);
+
         if (!text) {
           return 'AI STRATEGIC ANGLE:\nOverall Assessment: AI analysis did not return a specific insight.\nActionable Angles:\n*   Consider general best practices: up-to-date content, clear explanations, and unique examples.';
         }
