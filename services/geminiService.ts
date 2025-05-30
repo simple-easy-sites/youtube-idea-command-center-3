@@ -39,11 +39,12 @@ if (shouldUseMockData) {
 }
 
 
-// Diagnostic: Pass through text unchanged.
 const sanitizeAIResponseText = (text: string | undefined): string => {
     if (!text) return '';
-    // Previous minimal sanitization: return text.replace(/\x00/g, '');
-    return text; // Pass through directly for diagnostic purposes
+    // Remove C0 control characters except HT (\x09), LF (\x0A), CR (\x0D).
+    // Also remove the DEL character (\x7F).
+    // This regex targets characters in the ranges U+0000-U+0008, U+000B-U+000C, U+000E-U+001F, and U+007F.
+    return text.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
 };
 
 
