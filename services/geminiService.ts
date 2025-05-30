@@ -38,29 +38,36 @@ if (shouldUseMockData) {
   }
 }
 
-// 1. REPLACED sanitizeAIResponseText FUNCTION
+// 1. REPLACED sanitizeAIResponseText FUNCTION (with further refinement)
 const sanitizeAIResponseText = (text: string | undefined): string => {
   if (!text) return '';
   
   try {
-    // MUCH more conservative approach - only remove truly problematic characters
-    const cleaned = text
-      .replace(/\0/g, '') // Remove NULL bytes only
-      .replace(/\uFFFD/g, '') // Remove Unicode replacement characters  
-      .replace(/\r\n/g, '\n') // Normalize line endings
-      .replace(/\r/g, '\n')
-      .trim();
+    let cleaned = text
+      .replace(/\r\n/g, '\n') // Normalize line endings first
+      .replace(/\r/g, '\n');
+
+    // Remove specific problematic Unicode replacement char (U+FFFD)
+    // and C0 control characters (0x00-0x1F) excluding Tab (0x09), LF (0x0A), CR (0x0D),
+    // plus the DEL character (0x7F).
+    // NUL (\x00) is covered by \x00-\x08.
+    cleaned = cleaned.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F\uFFFD]/g, "");
     
-    // Test if the text is valid UTF-8
+    cleaned = cleaned.trim(); // Trim after all replacements
+    
+    // Test if the text is valid UTF-8 and try to fix minor issues
     try {
+      // This can help fix some subtly broken UTF-8 sequences or validate it.
       return decodeURIComponent(encodeURIComponent(cleaned));
     } catch (encodingError) {
-      console.warn('Text encoding issue detected, using cleaned text as-is');
-      return cleaned;
+      // This catch block means encodeURIComponent failed, likely due to remaining
+      // invalid surrogate pairs or other characters it can't handle.
+      console.warn('Text encoding issue detected (encodeURIComponent failed), using cleaned text as-is after control char removal:', encodingError);
+      return cleaned; // Return the text after control character removal
     }
   } catch (error) {
     console.error('Error in text sanitization:', error);
-    // If sanitization fails, return original text rather than corrupting it
+    // If sanitization itself throws an unexpected error, return original text
     return text;
   }
 };
@@ -71,10 +78,11 @@ export const debugTextIssues = (text: string, label: string = 'Text') => {
   console.log('Length:', text.length);
   console.log('First 100 chars:', JSON.stringify(text.substring(0, 100)));
   console.log('Contains non-ASCII:', /[^\x00-\x7F]/.test(text));
-  console.log('Contains control chars:', /[\x00-\x1F\x7F]/.test(text));
+  // Check for C0 controls (excluding HT, LF, CR) and DEL.
+  console.log('Contains other control chars (excl. HT,LF,CR):', /[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/.test(text));
   console.log('Character codes (first 20):', text.substring(0, 20).split('').map(c => `${c}(${c.charCodeAt(0)})`));
   console.groupEnd();
-  return text; // Return text to allow chaining if desired, though typically used for side-effect
+  return text; 
 };
 
 // 3. ADDED RESPONSE HANDLER FUNCTION
@@ -87,22 +95,17 @@ const handleGeminiResponse = (response: GenerateContentResponse, operation: stri
       return '';
     }
 
-    // Example of how you might use debugTextIssues (optional, for your own debugging)
-    // debugTextIssues(rawText, `${operation} - Raw API Response`);
-
-    // Minimal processing to preserve text integrity
-    const processedText = rawText
+    // Minimal processing: normalize line endings and trim.
+    // The main sanitization will happen in sanitizeAIResponseText.
+    let processedText = rawText
       .replace(/\r\n/g, '\n') // Normalize line endings
       .replace(/\r/g, '\n')   // Convert remaining \r to \n
       .trim();
 
-    // Only sanitize if there are obvious encoding issues
-    if (/[\x00\uFFFD]/.test(processedText)) {
-      console.warn(`${operation}: Detected encoding issues, applying sanitization`);
-      return sanitizeAIResponseText(processedText);
-    }
+    // Always pass through sanitizeAIResponseText for consistent, robust cleaning.
+    // The function itself is designed to be conservative if major issues arise.
+    return sanitizeAIResponseText(processedText);
 
-    return processedText;
   } catch (error) {
     console.error(`${operation}: Error processing Gemini response:`, error);
     return `Error processing response: ${error instanceof Error ? error.message : 'Unknown error'}`;
@@ -134,7 +137,11 @@ export const generateIdeasWithGemini = async (
                 keywords: [`${exampleApp} issues ${exampleNiche}`, `fix ${exampleApp} ${nicheName}`, `${exampleApp} troubleshooting`],
                 aiRationale: `Mock search indicates high interest in solving problems related to ${combinedConceptExample}. 'Quick Fixes' appeals to users looking for immediate solutions.`
             }
-        ],
+        ].map(idea => ({
+          text: sanitizeAIResponseText(idea.text)!, // Ensure mock data is also sanitized
+          keywords: idea.keywords.map(k => sanitizeAIResponseText(k)!),
+          aiRationale: sanitizeAIResponseText(idea.aiRationale)!
+        })),
         strategicGuidance: {
             mainRecommendation: nicheName || appSoftware || userQuery ? 
                 sanitizeAIResponseText(`STRATEGY_GUIDANCE: Mock strategy for "${userQuery || nicheName || appSoftware}" - Focus on practical, step-by-step problem-solving content. (Mock insight: Search for '${userQuery || appSoftware || nicheName} help' increased 20% last quarter; top content is text-based, indicating video opportunity.)`) : 
@@ -232,7 +239,6 @@ Do NOT use numbering or bullet points for ideas/keywords/rationales. Each part o
         }
     });
     
-    // 4. UPDATED generateIdeasWithGemini
     const text = handleGeminiResponse(response, 'Idea Generation');
     
     if (!text) {
@@ -299,12 +305,12 @@ export const generateVideoScriptAndInstructions = async (
         scriptOpening += `\n(Strategic Angle for this script: ${strategicAngle.substring(0,100)}...)`;
       }
       return {
-          script: sanitizeAIResponseText(`${scriptOpening}\n\n**Step 1: Initial Setup**\n- Briefly explain the first crucial step for ${ideaText.toLowerCase().replace(/^how to /,'').replace(/\?$/,'')}.\n- For example, if setting up a budget for Rent: $1800, Groceries: $350, Utilities: $150.\n\n**Step 2: Core Process**\n- Detail the main actions for ${appSoftware || 'the task'}.\n- If you're finding this helpful, please take a moment to like this video and subscribe for more tutorials like this. Now, let's continue with the next step...\n\n**Step 3: Finalization & Tips**\n- Cover any concluding actions and offer one quick tip. \n\nThat's how you ${ideaText.toLowerCase().replace(/^how to /,'').replace(/\?$/,'')}. How have you used ${appSoftware || 'this method'} for ${niche}? Let us know in the comments below! If this was helpful, please like and subscribe for more!`),
-          instructions: sanitizeAIResponseText(`[MOCK VIDEO INSTRUCTIONS for "${ideaText}"]\n\n**1. Recording Setup:**\n- Ensure OBS Studio is ready for a single-take recording.\n- Have notes for keywords: ${optimalKeywords ? optimalKeywords.join(', ') : 'N/A'}.\n\n**2. Delivery:**\n- Speak clearly and directly. Move from step to step without filler.\n- Show on screen what's being described for ${appSoftware || 'the process'}.\n\n**3. Visuals:**\n- Minimal on-screen text needed if delivery is clear. Maybe a title card.`),
+          script: sanitizeAIResponseText(`${scriptOpening}\n\n**Step 1: Initial Setup**\n- Briefly explain the first crucial step for ${ideaText.toLowerCase().replace(/^how to /,'').replace(/\?$/,'')}.\n- For example, if setting up a budget for Rent: $1800, Groceries: $350, Utilities: $150.\n\n**Step 2: Core Process**\n- Detail the main actions for ${appSoftware || 'the task'}.\n- If you're finding this helpful, please take a moment to like this video and subscribe for more tutorials like this. Now, let's continue with the next step...\n\n**Step 3: Finalization & Tips**\n- Cover any concluding actions and offer one quick tip. \n\nThat's how you ${ideaText.toLowerCase().replace(/^how to /,'').replace(/\?$/,'')}. How have you used ${appSoftware || 'this method'} for ${niche}? Let us know in the comments below! If this was helpful, please like and subscribe for more!`)!,
+          instructions: sanitizeAIResponseText(`[MOCK VIDEO INSTRUCTIONS for "${ideaText}"]\n\n**1. Recording Setup:**\n- Ensure OBS Studio is ready for a single-take recording.\n- Have notes for keywords: ${optimalKeywords ? optimalKeywords.join(', ') : 'N/A'}.\n\n**2. Delivery:**\n- Speak clearly and directly. Move from step to step without filler.\n- Show on screen what's being described for ${appSoftware || 'the process'}.\n\n**3. Visuals:**\n- Minimal on-screen text needed if delivery is clear. Maybe a title card.`)!,
           resources: [
             `Official ${appSoftware || niche} quick start guide (Search: "${appSoftware || niche} quick start")`,
             `OBS Studio setup tutorial (Search: "OBS Studio beginner tutorial")`,
-          ].map(r => sanitizeAIResponseText(r))
+          ].map(r => sanitizeAIResponseText(r)!)
       };
   }
 
@@ -393,34 +399,32 @@ Begin Generation:
         }
     });
     
-    // 5. UPDATED generateVideoScriptAndInstructions
     const processedText = handleGeminiResponse(response, 'Script Generation');
 
      if (!processedText) {
         console.warn("Gemini API returned empty text response for script generation.");
-        return { script: sanitizeAIResponseText('Script generation failed: Empty response from AI.'), instructions: sanitizeAIResponseText('Instructions generation failed.'), resources: [] };
+        return { script: 'Script generation failed: Empty response from AI.', instructions: 'Instructions generation failed.', resources: [] };
     }
 
-    let script = sanitizeAIResponseText('Script generation failed: Could not parse Part 1.');
-    let instructions = sanitizeAIResponseText('Instructions generation failed: Could not parse Part 2.');
+    let script = 'Script generation failed: Could not parse Part 1.';
+    let instructions = 'Instructions generation failed: Could not parse Part 2.';
     let resources: string[] = [];
 
-    // Updated regex for script matching
     const scriptMatch = processedText.match(/\*\*Part 1: Video Script[^*]*\*\*\s*([\s\S]*?)(?=\*\*Part 2:|$)/i);
     if (scriptMatch && scriptMatch[1]) {
-        script = sanitizeAIResponseText(scriptMatch[1].trim());
+        script = sanitizeAIResponseText(scriptMatch[1].trim()); // Sanitize the extracted part
     }
 
     const instructionsMatch = processedText.match(/\*\*Part 2: Video Production Instructions\*\*\s*([\s\S]*?)(?=\*\*Part 3: Suggested Resources\*\*|$)/i);
     if (instructionsMatch && instructionsMatch[1]) {
-        instructions = sanitizeAIResponseText(instructionsMatch[1].trim());
+        instructions = sanitizeAIResponseText(instructionsMatch[1].trim()); // Sanitize the extracted part
     }
 
     const resourcesMatch = processedText.match(/\*\*Part 3: Suggested Resources\*\*\s*([\s\S]*)/i);
     if (resourcesMatch && resourcesMatch[1]) {
-        const extractedResourcesText = sanitizeAIResponseText(resourcesMatch[1].trim());
+        const extractedResourcesText = resourcesMatch[1].trim(); // No need to sanitize the whole block again if lines are sanitized
         resources = extractedResourcesText.split('\n')
-                      .map(r => sanitizeAIResponseText(r.replace(/^(\* |- )/,'').trim())) 
+                      .map(r => sanitizeAIResponseText(r.replace(/^(\* |- )/,'').trim())) // Sanitize each line
                       .filter(r => r.length > 5); 
     }
     
@@ -434,7 +438,7 @@ Begin Generation:
     console.error('Error calling Gemini API for script generation:', error);
     let message = 'An unknown error occurred during script generation.';
     if (error instanceof Error) message = `Gemini API error for script: ${error.message}`;
-    return { script: sanitizeAIResponseText(`Script Generation Error: ${message}`), instructions: sanitizeAIResponseText('Instructions generation failed due to API error.'), resources: [] };
+    return { script: `Script Generation Error: ${message}`, instructions: 'Instructions generation failed due to API error.', resources: [] };
   }
 };
 
@@ -448,18 +452,21 @@ export const expandIdeaIntoRelatedIdeas = async (
       await new Promise(resolve => setTimeout(resolve, 500));
       return [
           {
-            text: sanitizeAIResponseText(`[MOCK] Advanced Techniques for: "${ideaText.substring(0,30)}..." using ${appSoftware || 'related tools'} in ${niche}. Focus: Hyper-specific example 1.`),
+            text: `[MOCK] Advanced Techniques for: "${ideaText.substring(0,30)}..." using ${appSoftware || 'related tools'} in ${niche}. Focus: Hyper-specific example 1.`,
             keywords: [`advanced ${appSoftware || niche}`, `${ideaText.substring(0,10)} expert tricks`, `${niche} pro guide`]
           },
           {
-            text: sanitizeAIResponseText(`[MOCK] Troubleshooting rare error XYZ with ${appSoftware || 'this topic'} for "${ideaText.substring(0,20)}..." for niche users.`),
+            text: `[MOCK] Troubleshooting rare error XYZ with ${appSoftware || 'this topic'} for "${ideaText.substring(0,20)}..." for niche users.`,
             keywords: [`${appSoftware || niche} specific error XYZ`, `fix ${ideaText.substring(0,10)} rare problem`, `${niche} specific troubleshooting`]
           },
            {
-            text: sanitizeAIResponseText(`[MOCK] How to use ${appSoftware || 'this tool'} to achieve [Hyper-Specific Task, e.g., 'automate window washing schedules'] within the ${niche} context.`),
+            text: `[MOCK] How to use ${appSoftware || 'this tool'} to achieve [Hyper-Specific Task, e.g., 'automate window washing schedules'] within the ${niche} context.`,
             keywords: [`${appSoftware || niche} for window washing`, `automate specific task ${niche}`, `unusual uses of ${appSoftware}`]
           }
-      ];
+      ].map(idea => ({ // Sanitize mock data
+          text: sanitizeAIResponseText(idea.text)!,
+          keywords: idea.keywords.map(k => sanitizeAIResponseText(k)!)
+      }));
   }
 
   if (!ai) {
@@ -497,7 +504,6 @@ KEYWORDS: dynamic pivot tables, Excel sales report, monthly sales tracking, Exce
         config: { temperature: 0.8, topP: 0.95, topK: 50 }
     });
 
-    // 6. UPDATED expandIdeaIntoRelatedIdeas
     const text = handleGeminiResponse(response, 'Idea Expansion');
 
     if (!text) {
@@ -518,13 +524,14 @@ KEYWORDS: dynamic pivot tables, Excel sales report, monthly sales tracking, Exce
             i++; 
         }
         if (ideaTitle.length > 10 && ideaTitle.length < 200) { 
-            expandedIdeasWithKeywords.push({ text: ideaTitle, keywords });
+            // Each part is already sanitized by handleGeminiResponse if it was one block,
+            // but if we are constructing strings, better to sanitize final parts.
+            // However, handleGeminiResponse returns a single string. This logic is splitting it.
+            // The `sanitizeAIResponseText` calls below are fine as a final pass.
+            expandedIdeasWithKeywords.push({ text: sanitizeAIResponseText(ideaTitle), keywords: keywords.map(k => sanitizeAIResponseText(k)) });
         }
     }
-    return expandedIdeasWithKeywords.map(idea => ({ 
-        text: sanitizeAIResponseText(idea.text), // Still good to sanitize individual pieces if constructing
-        keywords: idea.keywords.map(k => sanitizeAIResponseText(k))
-    }));
+    return expandedIdeasWithKeywords;
 
   } catch (error) {
     console.error('Error calling Gemini API for idea expansion:', error);
@@ -550,7 +557,7 @@ export const generateKeywordsWithGemini = async (
         `how to ${ideaText.substring(0,15)} ${appSoftware || ''}`,
         `${appSoftware || niche} tips`,
         `best ${niche} ${appSoftware || 'guide'}`,
-      ].map(k => sanitizeAIResponseText(k)), 
+      ].map(k => sanitizeAIResponseText(k)!), 
       groundingChunks: [
         { web: { uri: "https://mock-source-1.com", title: "Mock Source for Keywords 1" } },
         { web: { uri: "https://mock-source-2.com/article", title: "Another Mock Keyword Article" } },
@@ -600,7 +607,6 @@ excel budget template for students
       },
     });
 
-    // 6. UPDATED generateKeywordsWithGemini
     const text = handleGeminiResponse(response, 'Keyword Generation');
     const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks as GroundingChunk[] | undefined;
 
@@ -611,8 +617,7 @@ excel budget template for students
 
     const generatedKeywords = text
       .split('\n')
-      .map(line => sanitizeAIResponseText(line.trim())) // Sanitize individual lines if needed
-      .map(line => line.replace(/^(- |\* |\d+\. )/, '').trim()) 
+      .map(line => sanitizeAIResponseText(line.trim().replace(/^(- |\* |\d+\. )/, '').trim())) // Ensure each line is sanitized
       .filter(line => line.length > 2 && line.length < 100); 
 
     return { keywords: generatedKeywords, groundingChunks };
@@ -637,12 +642,12 @@ export const generateTitleSuggestionsWithGemini = async (
     await new Promise(resolve => setTimeout(resolve, 500));
     return [
       {
-        suggestedTitle: sanitizeAIResponseText(`[MOCK] REVEALED: The Secret to Using ${appSoftware || 'Topic'} for ${niche}!`),
-        rationale: sanitizeAIResponseText("Uses a stronger hook ('REVEALED', 'Secret') and directly mentions the benefit.")
+        suggestedTitle: sanitizeAIResponseText(`[MOCK] REVEALED: The Secret to Using ${appSoftware || 'Topic'} for ${niche}!`)!,
+        rationale: sanitizeAIResponseText("Uses a stronger hook ('REVEALED', 'Secret') and directly mentions the benefit.")!
       },
       {
-        suggestedTitle: sanitizeAIResponseText(`[MOCK] ${appSoftware || 'Topic'} ${niche} Tutorial: Ultimate Guide 2024`),
-        rationale: sanitizeAIResponseText("More SEO-friendly, includes 'Tutorial', 'Ultimate Guide', and current year.")
+        suggestedTitle: sanitizeAIResponseText(`[MOCK] ${appSoftware || 'Topic'} ${niche} Tutorial: Ultimate Guide 2024`)!,
+        rationale: sanitizeAIResponseText("More SEO-friendly, includes 'Tutorial', 'Ultimate Guide', and current year.")!
       }
     ];
   }
@@ -698,7 +703,6 @@ Do NOT include any other text, preamble, or concluding remarks outside of this s
       }
     });
 
-    // 6. UPDATED generateTitleSuggestionsWithGemini
     const text = handleGeminiResponse(response, 'Title Suggestions');
 
     if (!text) {
@@ -713,7 +717,7 @@ Do NOT include any other text, preamble, or concluding remarks outside of this s
       const suggestionMatch = part.match(/SUGGESTION:\s*([\s\S]*?)\s*RATIONALE:\s*([\s\S]*)/);
       if (suggestionMatch && suggestionMatch[1] && suggestionMatch[2]) {
         suggestions.push({
-          suggestedTitle: sanitizeAIResponseText(suggestionMatch[1].trim()), // Sanitize individual pieces
+          suggestedTitle: sanitizeAIResponseText(suggestionMatch[1].trim()),
           rationale: sanitizeAIResponseText(suggestionMatch[2].trim()),      
         });
       } else {
@@ -738,14 +742,14 @@ export const analyzeYouTubeCompetitorsForAngles = async (
     if (shouldUseMockData) {
         console.warn("Gemini (analyzeYouTubeCompetitorsForAngles): Using mock data due to API key issue.");
         await new Promise(resolve => setTimeout(resolve, 400));
-        if (competitorVideos.length === 0) return sanitizeAIResponseText("AI STRATEGIC ANGLE:\nOverall Assessment: Mock: No competitor videos found. This topic seems wide open!\nActionable Angles:\n*   Focus on a comprehensive beginner's guide, clearly dated for the current year (e.g., 2024).\n*   Highlight unique benefits or ease of use if applicable to the idea.\n*   Create a visually appealing thumbnail that stands out.");
+        if (competitorVideos.length === 0) return sanitizeAIResponseText("AI STRATEGIC ANGLE:\nOverall Assessment: Mock: No competitor videos found. This topic seems wide open!\nActionable Angles:\n*   Focus on a comprehensive beginner's guide, clearly dated for the current year (e.g., 2024).\n*   Highlight unique benefits or ease of use if applicable to the idea.\n*   Create a visually appealing thumbnail that stands out.")!;
         const mockComp = competitorVideos[0];
-        return sanitizeAIResponseText(`AI STRATEGIC ANGLE:\nOverall Assessment: Mock: Given competitors like "${mockComp.title}" (Views: ${mockComp.viewCountText}, Age: ${mockComp.publishedAtText}, Channel Subs: ${mockComp.channelSubscriberCountText}), there's some existing content.\nActionable Angles:\n*   Consider an up-to-date (e.g., 2024) version for "${ideaText}" if competitor content is older.\n*   Explore a unique practical example or a niche application not covered by others.\n*   If competitors have low subscriber counts but high views on similar topics, it indicates strong demand; focus on higher quality production or clearer explanations.`);
+        return sanitizeAIResponseText(`AI STRATEGIC ANGLE:\nOverall Assessment: Mock: Given competitors like "${mockComp.title}" (Views: ${mockComp.viewCountText}, Age: ${mockComp.publishedAtText}, Channel Subs: ${mockComp.channelSubscriberCountText}), there's some existing content.\nActionable Angles:\n*   Consider an up-to-date (e.g., 2024) version for "${ideaText}" if competitor content is older.\n*   Explore a unique practical example or a niche application not covered by others.\n*   If competitors have low subscriber counts but high views on similar topics, it indicates strong demand; focus on higher quality production or clearer explanations.`)!;
     }
     
     if (!ai) {
       console.error("Gemini (analyzeYouTubeCompetitorsForAngles): AI SDK not initialized. Cannot make live API call.");
-      return sanitizeAIResponseText('AI STRATEGIC ANGLE:\nOverall Assessment: Gemini API Key (checked from process.env.API_KEY and fallback import.meta.env.VITE_API_KEY) not configured or SDK failed to initialize. Cannot analyze competitors.\nActionable Angles:\n*   Manually review competitor videos for gaps and opportunities.');
+      return sanitizeAIResponseText('AI STRATEGIC ANGLE:\nOverall Assessment: Gemini API Key (checked from process.env.API_KEY and fallback import.meta.env.VITE_API_KEY) not configured or SDK failed to initialize. Cannot analyze competitors.\nActionable Angles:\n*   Manually review competitor videos for gaps and opportunities.')!;
     }
 
     const competitorInfo = competitorVideos
@@ -795,18 +799,17 @@ Actionable Angles:
             config: { temperature: 0.68, topP: 0.92, topK: 45 }
         });
         
-        // 6. UPDATED analyzeYouTubeCompetitorsForAngles
         const text = handleGeminiResponse(response, 'Competitor Analysis');
 
         if (!text) {
-          return sanitizeAIResponseText('AI STRATEGIC ANGLE:\nOverall Assessment: AI analysis did not return a specific insight.\nActionable Angles:\n*   Consider general best practices: up-to-date content, clear explanations, and unique examples.');
+          return sanitizeAIResponseText('AI STRATEGIC ANGLE:\nOverall Assessment: AI analysis did not return a specific insight.\nActionable Angles:\n*   Consider general best practices: up-to-date content, clear explanations, and unique examples.')!;
         }
         const prefixedText = text.trim().startsWith("AI STRATEGIC ANGLE:") ? text.trim() : `AI STRATEGIC ANGLE:\n${text.trim()}`;
-        return sanitizeAIResponseText(prefixedText); // Sanitize the final constructed string
+        return sanitizeAIResponseText(prefixedText)!;
 
     } catch (error) {
         console.error('Error calling Gemini API for competitor analysis:', error);
         const errorMessage = error instanceof Error ? error.message : 'Unknown error during AI analysis.';
-        return sanitizeAIResponseText(`AI STRATEGIC ANGLE:\nOverall Assessment: Error during analysis - ${errorMessage}\nActionable Angles:\n*   Review competitor videos manually to identify gaps.`);
+        return sanitizeAIResponseText(`AI STRATEGIC ANGLE:\nOverall Assessment: Error during analysis - ${errorMessage}\nActionable Angles:\n*   Review competitor videos manually to identify gaps.`)!;
     }
 };
