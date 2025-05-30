@@ -1,0 +1,6 @@
+{
+  "name": "YouTube Idea Command Center",
+  "description": "A personal web application for YouTube creators to generate, manage, and prioritize video content ideas using AI. Features a sleek, dark-mode UI for daily content ideation.",
+  "requestFramePermissions": [],
+  "prompt": ""
+}
