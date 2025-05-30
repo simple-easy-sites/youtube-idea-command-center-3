@@ -2,25 +2,32 @@
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
 import { GroundingChunk, TitleSuggestion, AIStrategicGuidance, YouTubeVideoResult, HighRpmNicheCategory, NEW_HIGH_RPM_CATEGORIES } from '../types'; // Added NEW_HIGH_RPM_CATEGORIES
 
-// Use import.meta.env for Vite environment variables
-const API_KEY = import.meta.env.VITE_API_KEY;
+// The API key for Gemini MUST be obtained from process.env.API_KEY as per SDK guidelines.
+// Assume this variable is pre-configured and made available to the client-side
+// environment (e.g., through Vite's `define` configuration if set in .env files or CI/CD).
+const GEMINI_API_KEY = process.env.API_KEY;
 
-if (!API_KEY || API_KEY === "YOUR_ACTUAL_GEMINI_API_KEY_HERE" || API_KEY === "MISSING_API_KEY_WILL_FAIL") { 
-  console.warn("Gemini Service: VITE_API_KEY for Gemini is missing or a placeholder. AI features will use mock data or fail. Ensure VITE_API_KEY is set in Vercel Environment Variables.");
+if (!GEMINI_API_KEY || GEMINI_API_KEY === "YOUR_ACTUAL_GEMINI_API_KEY_HERE" || GEMINI_API_KEY === "MISSING_API_KEY_WILL_FAIL") { 
+  console.warn("Gemini Service: API_KEY for Gemini (expected at process.env.API_KEY) is missing or a placeholder. AI features will use mock data or fail. Ensure API_KEY is set in your environment and accessible as process.env.API_KEY.");
 }
 
-const ai = new GoogleGenAI({ apiKey: API_KEY || "MISSING_API_KEY_WILL_FAIL" }); 
+// Initialize GoogleGenAI with process.env.API_KEY.
+// The SDK guidelines state to assume the key is pre-configured and valid.
+// If GEMINI_API_KEY is undefined here, the SDK call will likely fail, which is
+// the expected behavior for a missing mandatory key.
+const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY }); 
 const modelName = 'gemini-2.5-flash-preview-04-17'; 
 
-const shouldUseMockData = !API_KEY || API_KEY === "MISSING_API_KEY_WILL_FAIL" || API_KEY === "YOUR_ACTUAL_GEMINI_API_KEY_HERE";
+// Determine if mock data should be used based on the state of process.env.API_KEY.
+const shouldUseMockData = !GEMINI_API_KEY || GEMINI_API_KEY === "MISSING_API_KEY_WILL_FAIL" || GEMINI_API_KEY === "YOUR_ACTUAL_GEMINI_API_KEY_HERE";
 
-// Helper to remove common non-printable characters except standard whitespace
+// Helper to remove problematic control characters except standard whitespace
 const sanitizeAIResponseText = (text: string | undefined): string => {
     if (!text) return '';
-    // Allow printable ASCII (U+0020 to U+007E), 
-    // Latin-1 Supplement (U+00A0 to U+00FF for common accented characters),
-    // and specific whitespace characters: space (already in U+0020), tab, newline, carriage return.
-    return text.replace(/[^\u0020-\u007E\u00A0-\u00FF\t\n\r]/g, '');
+    // Removes C0 control characters (0x00-0x1F) except for HT (0x09), LF (0x0A), CR (0x0D).
+    // Also removes DEL (0x7F).
+    // This allows a much wider range of printable Unicode characters.
+    return text.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
 };
 
 
@@ -33,7 +40,7 @@ export const generateIdeasWithGemini = async (
   highRpmNicheContext: HighRpmNicheCategory[] 
 ): Promise<{ ideas: Array<{text: string, keywords: string[], aiRationale: string}>; strategicGuidance: AIStrategicGuidance | null }> => {
   if (shouldUseMockData) {
-    console.warn("Gemini (generateIdeas): Missing/placeholder VITE_API_KEY. Returning mock data.");
+    console.warn("Gemini (generateIdeas): Missing/placeholder API_KEY (process.env.API_KEY). Returning mock data.");
     await new Promise(resolve => setTimeout(resolve, 500));
     const exampleNiche = nicheName || "Personal Finance"; // Use nicheName
     const exampleApp = appSoftware || (exampleNiche === "Personal Finance" ? "Budgeting Apps" : "Relevant Software");
@@ -201,7 +208,7 @@ export const generateVideoScriptAndInstructions = async (
   strategicAngle?: string 
 ): Promise<{ script: string; instructions: string; resources: string[] }> => {
   if (shouldUseMockData) {
-      console.warn("Gemini (generateScript): Missing/placeholder VITE_API_KEY. Returning mock data.");
+      console.warn("Gemini (generateScript): Missing/placeholder API_KEY (process.env.API_KEY). Returning mock data.");
       await new Promise(resolve => setTimeout(resolve, 700));
       let scriptOpening = `[MOCK SCRIPT for: "${ideaText}"]\n\nToday, I'm going to show you exactly how to ${ideaText.toLowerCase().replace(/^how to /,'').replace(/\?$/,'')}.`;
       if (optimalKeywords && optimalKeywords.length > 0) {
@@ -319,6 +326,7 @@ Begin Generation:
     const scriptMatch = sanitizedRawText.match(/\*\*Part 1: Video Script\*\*\s*([\s\S]*?)(?=\*\*Part 2: Video Production Instructions\*\*|$)/);
     if (scriptMatch && scriptMatch[1]) {
         // Sanitize the extracted part again, just in case the regex captured something complex
+        // However, with the new sanitizeAIResponseText, this second sanitization has less impact.
         script = sanitizeAIResponseText(scriptMatch[1].trim());
     }
 
@@ -331,14 +339,14 @@ Begin Generation:
     if (resourcesMatch && resourcesMatch[1]) {
         const extractedResourcesText = sanitizeAIResponseText(resourcesMatch[1].trim());
         resources = extractedResourcesText.split('\n')
-                      .map(r => sanitizeAIResponseText(r.replace(/^(\* |- )/,'').trim())) // Sanitize each resource line
+                      .map(r => sanitizeAIResponseText(r.replace(/^(\* |- )/,'').trim())) 
                       .filter(r => r.length > 5); 
     }
     
     return { 
         script: script, 
         instructions: instructions, 
-        resources: resources // Already sanitized
+        resources: resources 
     };
 
   } catch (error) {
@@ -356,7 +364,7 @@ export const expandIdeaIntoRelatedIdeas = async (
   appSoftware: string
 ): Promise<Array<{text: string, keywords: string[]}>> => { 
   if (shouldUseMockData) {
-      console.warn("Gemini (expandIdea): Missing/placeholder VITE_API_KEY. Returning mock data.");
+      console.warn("Gemini (expandIdea): Missing/placeholder API_KEY (process.env.API_KEY). Returning mock data.");
       await new Promise(resolve => setTimeout(resolve, 500));
       return [
           {
@@ -427,7 +435,7 @@ KEYWORDS: dynamic pivot tables, Excel sales report, monthly sales tracking, Exce
             expandedIdeasWithKeywords.push({ text: ideaTitle, keywords });
         }
     }
-    return expandedIdeasWithKeywords.map(idea => ({ // Sanitize each part
+    return expandedIdeasWithKeywords.map(idea => ({ 
         text: sanitizeAIResponseText(idea.text),
         keywords: idea.keywords.map(k => sanitizeAIResponseText(k))
     }));
@@ -447,7 +455,7 @@ export const generateKeywordsWithGemini = async (
   appSoftware: string
 ): Promise<{ keywords: string[]; groundingChunks: GroundingChunk[] | undefined }> => {
   if (shouldUseMockData) {
-    console.warn("Gemini (generateKeywords): Missing/placeholder VITE_API_KEY. Returning mock data.");
+    console.warn("Gemini (generateKeywords): Missing/placeholder API_KEY (process.env.API_KEY). Returning mock data.");
     await new Promise(resolve => setTimeout(resolve, 600));
     return {
       keywords: [
@@ -456,7 +464,7 @@ export const generateKeywordsWithGemini = async (
         `how to ${ideaText.substring(0,15)} ${appSoftware || ''}`,
         `${appSoftware || niche} tips`,
         `best ${niche} ${appSoftware || 'guide'}`,
-      ].map(k => sanitizeAIResponseText(k)), // Sanitize mock keywords
+      ].map(k => sanitizeAIResponseText(k)), 
       groundingChunks: [
         { web: { uri: "https://mock-source-1.com", title: "Mock Source for Keywords 1" } },
         { web: { uri: "https://mock-source-2.com/article", title: "Another Mock Keyword Article" } },
@@ -512,7 +520,7 @@ excel budget template for students
 
     const generatedKeywords = text
       .split('\n')
-      .map(line => sanitizeAIResponseText(line.trim())) // Sanitize each keyword
+      .map(line => sanitizeAIResponseText(line.trim())) 
       .map(line => line.replace(/^(- |\* |\d+\. )/, '').trim()) 
       .filter(line => line.length > 2 && line.length < 100); 
 
@@ -534,7 +542,7 @@ export const generateTitleSuggestionsWithGemini = async (
   keywords?: string[]
 ): Promise<TitleSuggestion[]> => {
   if (shouldUseMockData) {
-    console.warn("Gemini (generateTitleSuggestions): Missing/placeholder VITE_API_KEY. Returning mock data.");
+    console.warn("Gemini (generateTitleSuggestions): Missing/placeholder API_KEY (process.env.API_KEY). Returning mock data.");
     await new Promise(resolve => setTimeout(resolve, 500));
     return [
       {
@@ -609,8 +617,8 @@ Do NOT include any other text, preamble, or concluding remarks outside of this s
       const suggestionMatch = part.match(/SUGGESTION:\s*([\s\S]*?)\s*RATIONALE:\s*([\s\S]*)/);
       if (suggestionMatch && suggestionMatch[1] && suggestionMatch[2]) {
         suggestions.push({
-          suggestedTitle: sanitizeAIResponseText(suggestionMatch[1].trim()), // Sanitize
-          rationale: sanitizeAIResponseText(suggestionMatch[2].trim()),      // Sanitize
+          suggestedTitle: sanitizeAIResponseText(suggestionMatch[1].trim()), 
+          rationale: sanitizeAIResponseText(suggestionMatch[2].trim()),      
         });
       } else {
          console.warn("Could not parse title suggestion part:", part);
@@ -632,13 +640,13 @@ export const analyzeYouTubeCompetitorsForAngles = async (
     competitorVideos: YouTubeVideoResult[] 
 ): Promise<string> => {
     if (shouldUseMockData) {
-        console.warn("Gemini (analyzeYouTubeCompetitorsForAngles): Missing/placeholder VITE_API_KEY. Returning mock data.");
+        console.warn("Gemini (analyzeYouTubeCompetitorsForAngles): Missing/placeholder API_KEY (process.env.API_KEY). Returning mock data.");
         await new Promise(resolve => setTimeout(resolve, 400));
         if (competitorVideos.length === 0) return sanitizeAIResponseText("AI STRATEGIC ANGLE:\nOverall Assessment: Mock: No competitor videos found. This topic seems wide open!\nActionable Angles:\n*   Focus on a comprehensive beginner's guide, clearly dated for the current year (e.g., 2024).\n*   Highlight unique benefits or ease of use if applicable to the idea.\n*   Create a visually appealing thumbnail that stands out.");
         const mockComp = competitorVideos[0];
         return sanitizeAIResponseText(`AI STRATEGIC ANGLE:\nOverall Assessment: Mock: Given competitors like "${mockComp.title}" (Views: ${mockComp.viewCountText}, Age: ${mockComp.publishedAtText}, Channel Subs: ${mockComp.channelSubscriberCountText}), there's some existing content.\nActionable Angles:\n*   Consider an up-to-date (e.g., 2024) version for "${ideaText}" if competitor content is older.\n*   Explore a unique practical example or a niche application not covered by others.\n*   If competitors have low subscriber counts but high views on similar topics, it indicates strong demand; focus on higher quality production or clearer explanations.`);
     }
-    if (!API_KEY) return sanitizeAIResponseText('AI STRATEGIC ANGLE:\nOverall Assessment: API Key not configured. Cannot analyze competitors.\nActionable Angles:\n*   Manually review competitor videos for gaps and opportunities.');
+    if (!GEMINI_API_KEY) return sanitizeAIResponseText('AI STRATEGIC ANGLE:\nOverall Assessment: Gemini API Key (process.env.API_KEY) not configured. Cannot analyze competitors.\nActionable Angles:\n*   Manually review competitor videos for gaps and opportunities.');
 
     const competitorInfo = competitorVideos
       .map(vid => `- Title: "${vid.title}"\n  Views: ${vid.viewCountText}\n  Age: ${vid.publishedAtText}\n  Channel Subscribers: ${vid.channelSubscriberCountText || 'N/A'}\n  Description Snippet: "${vid.descriptionSnippet || 'N/A'}"`)
