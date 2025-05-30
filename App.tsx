@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { IdeaStatus, VideoIdea, CategorizedIdeas, FlashMessage, HIGH_RPM_NICHES, IdeaPriority, AIStrategicGuidance, GroundingChunk, TitleSuggestion, UntappedScore, YouTubeVideoResult, HighRpmNicheInfo } from './types';
 import { Header } from './components/Header';
@@ -311,7 +312,8 @@ const App: React.FC = () => {
         targetIdea.niche,
         targetIdea.appSoftware,
         lengthMinutes,
-        targetIdea.suggestedKeywords || targetIdea.optimalKeywords 
+        targetIdea.suggestedKeywords || targetIdea.optimalKeywords,
+        targetIdea.aiCompetitiveAngle // Pass the strategic angle
       );
       const updatedIdeaWithScript: Partial<VideoIdea> = { script, videoInstructions: instructions, suggestedResources: resources, scriptLengthMinutes: lengthMinutes, isScriptLoading: false };
       handleUpdateIdea(ideaId, updatedIdeaWithScript);
@@ -319,7 +321,7 @@ const App: React.FC = () => {
       if (currentIdeaForModal) {
         setSelectedIdeaForScript({ ...currentIdeaForModal, ...updatedIdeaWithScript, isScriptLoading: false });
       }
-      addFlashMessage('success', `Script & instructions generated for "${targetIdea.text.substring(0,30)}...". ${(targetIdea.suggestedKeywords || targetIdea.optimalKeywords) ? 'Keywords were considered.' : ''}`);
+      addFlashMessage('success', `Script & instructions generated for "${targetIdea.text.substring(0,30)}...". ${targetIdea.aiCompetitiveAngle ? 'Strategic angle considered.': (targetIdea.suggestedKeywords || targetIdea.optimalKeywords) ? 'Keywords were considered.' : ''}`);
     } catch (error) {
       console.error("Error generating script:", error);
       addFlashMessage('error', `Failed to generate script: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -331,7 +333,7 @@ const App: React.FC = () => {
   
   const handleShowScriptModal = (ideaId: string) => {
     const targetIdea = ideas.find(idea => idea.id === ideaId);
-    if (targetIdea && (targetIdea.script || targetIdea.isScriptLoading || targetIdea.suggestedKeywords || targetIdea.optimalKeywords || targetIdea.titleSuggestions)) { 
+    if (targetIdea && (targetIdea.script || targetIdea.isScriptLoading || targetIdea.suggestedKeywords || targetIdea.optimalKeywords || targetIdea.titleSuggestions || targetIdea.aiCompetitiveAngle)) { 
         setSelectedIdeaForScript(targetIdea);
         setShowScriptModal(true);
     } else {

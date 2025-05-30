@@ -182,7 +182,8 @@ export const generateVideoScriptAndInstructions = async (
   niche: string,
   appSoftware: string,
   targetLengthMinutes: number = 5,
-  optimalKeywords?: string[] 
+  optimalKeywords?: string[],
+  strategicAngle?: string // NEW: Optional strategic angle
 ): Promise<{ script: string; instructions: string; resources: string[] }> => {
   if (shouldUseMockData) {
       console.warn("Gemini (generateScript): Missing/placeholder VITE_API_KEY. Returning mock data.");
@@ -190,6 +191,9 @@ export const generateVideoScriptAndInstructions = async (
       let scriptOpening = `[MOCK SCRIPT for: "${ideaText}"]\n\nToday, I'm going to show you exactly how to ${ideaText.toLowerCase().replace(/^how to /,'').replace(/\?$/,'')}.`;
       if (optimalKeywords && optimalKeywords.length > 0) {
           scriptOpening += `\n(Optimal keywords like '${optimalKeywords.join("', '")}' will be naturally integrated.)`;
+      }
+      if (strategicAngle) {
+        scriptOpening += `\n(Strategic Angle for this script: ${strategicAngle.substring(0,100)}...)`;
       }
       return {
           script: `${scriptOpening}\n\n**Step 1: Initial Setup**\n- Briefly explain the first crucial step for ${ideaText.toLowerCase().replace(/^how to /,'').replace(/\?$/,'')}.\n- For example, if setting up a budget for Rent: $1800, Groceries: $350, Utilities: $150.\n\n**Step 2: Core Process**\n- Detail the main actions for ${appSoftware || 'the task'}.\n- If you're finding this helpful, please take a moment to like this video and subscribe for more tutorials like this. Now, let's continue with the next step...\n\n**Step 3: Finalization & Tips**\n- Cover any concluding actions and offer one quick tip. \n\nThat's how you ${ideaText.toLowerCase().replace(/^how to /,'').replace(/\?$/,'')}. How have you used ${appSoftware || 'this method'} for ${niche}? Let us know in the comments below! If this was helpful, please like and subscribe for more!`,
@@ -201,22 +205,31 @@ export const generateVideoScriptAndInstructions = async (
       };
   }
 
-  const systemInstruction = `You are an expert technical writer and YouTube instructional video script creator.
+  let systemInstruction = `You are an expert technical writer and YouTube instructional video script creator.
 Your output MUST be direct, concise, and highly instructional.
 The script is for a "quick and dirty," minimal-edit, OBS Studio style screen recording.
 The creator wants to get straight to the point and deliver information efficiently.
 ABSOLUTELY NO fluff, overly conversational intros/outros, rhetorical questions to the audience, or unnecessary empathetic statements (e.g., "Are you struggling with X?").
 The tone must be professional, direct, helpful, and authoritative.`;
 
-  const prompt = `Generate a comprehensive script and step-by-step video production instructions for a YouTube video titled "${ideaText}".
+  let prompt = `Generate a comprehensive script and step-by-step video production instructions for a YouTube video titled "${ideaText}".
 The video should be approximately ${targetLengthMinutes} minutes long.
 The niche is '${niche}'${appSoftware ? ` and the software/app in focus is '${appSoftware}'` : ''}.
 ${optimalKeywords && optimalKeywords.length > 0 ? `Key SEO terms to naturally incorporate: ${optimalKeywords.join(', ')}.` : ''}
+`;
 
+  if (strategicAngle && strategicAngle.trim() !== "" && !strategicAngle.toLowerCase().includes("error during analysis")) {
+    prompt += `\n**CRITICAL STRATEGIC ANGLE TO INCORPORATE:**\n${strategicAngle}\nThe script's content, examples, and tone MUST reflect and deliver on this strategic angle. Emphasize the unique selling points or insights mentioned in this angle throughout the script.\n`;
+    systemInstruction += `\nThe script MUST align with and highlight the provided CRITICAL STRATEGIC ANGLE. All parts of the script, especially the introduction, core examples, and conclusion, should be tailored to reinforce this angle.`;
+  }
+
+
+  prompt += `
 **Part 1: Video Script (Full Text for Direct Delivery)**
 
 *   **Introduction (Very Brief - Max 10-15 seconds):**
     *   MUST start with a direct statement of the video's purpose. Example: "In this video, I'm going to show you exactly how to ${appSoftware ? `use ${appSoftware} to ` : ''}${ideaText.toLowerCase().replace(/^how to /,'').replace(/\?$/,'')}. Let's get started." OR "Today, we're covering how to ${appSoftware ? `use ${appSoftware} for ` : ''}${ideaText.toLowerCase().replace(/^how to /,'').replace(/\?$/,'')}. Here's how."
+    *   If a strategic angle was provided, the introduction MUST immediately set the stage for that angle. For instance, if the angle is about 'untapped secrets', the intro should promise to reveal these secrets related to "${ideaText}".
     *   DO NOT use phrases like "Are you having problems with..." or "Have you ever wondered...".
 
 *   **Main Content (Step-by-Step Instructions):**
@@ -226,12 +239,12 @@ ${optimalKeywords && optimalKeywords.length > 0 ? `Key SEO terms to naturally in
     *   When listing example categories for concepts like budgeting or planning (e.g., budget items like rent, groceries, entertainment; project tasks), PROVIDE PLAUSIBLE, ILLUSTRATIVE MONETARY/QUANTITATIVE EXAMPLES. For instance, if discussing budget categories: "For example, your budget might include Rent: $1850, Groceries: $450, Transportation: $150, and Entertainment: $100." If discussing project tasks: "This could mean Task A takes 2 hours, Task B takes 4 hours, and Task C (using ${appSoftware || 'the tool'}) takes 1 hour."
     *   Naturally integrate keywords if they fit the instructional context.
     *   Include essential practical tips or common pitfalls *briefly* within relevant steps.
-    *   If there's a unique angle for "${ideaText}", present it as a specific step or tip.
+    *   If a strategic angle was provided, ensure the steps, examples, and tips explicitly support and demonstrate this angle. (e.g., if the angle is 'untapped secrets', the steps should reveal these secrets).
     *   **Mid-Roll Engagement Prompt:** Somewhere in the middle of the main content (e.g., after completing a significant step or before moving to a new section), include a brief reminder: "If you're finding this tutorial helpful so far, please take a moment to hit that like button and subscribe for more content like this. Your support really helps the channel! Now, let's continue with Step X..."
 
 *   **Conclusion (Brief - Max 20-30 seconds):**
     *   MUST include:
-        1. A short summary of what was achieved (e.g., "And that's how you can easily ${appSoftware ? `use ${appSoftware} to ` : ''}${ideaText.toLowerCase().replace(/^how to /,'').replace(/\?$/,'')}.").
+        1. A short summary of what was achieved (e.g., "And that's how you can easily ${appSoftware ? `use ${appSoftware} to ` : ''}${ideaText.toLowerCase().replace(/^how to /,'').replace(/\?$/,'')}."). If a strategic angle was provided, briefly reiterate how the video addressed that angle.
         2. A specific engagement question related to the video's topic, prompting comments. Example: "How have you used ${appSoftware || 'this technique'} for your own ${niche} projects? Or what other features of ${appSoftware || 'this topic'} would you like to see covered? Let me know in the comments below!"
         3. A clear call to action: "If this video was helpful, please give it a thumbs up, subscribe for more tutorials, and hit that notification bell so you don't miss out on future content. Thanks for watching!"
     *   DO NOT use lengthy wrap-ups.
@@ -242,7 +255,7 @@ ${optimalKeywords && optimalKeywords.length > 0 ? `Key SEO terms to naturally in
 
 *   **Preparation:**
     *   What specific windows, applications (${appSoftware || 'relevant tools'}), or websites should be open and ready before starting OBS recording?
-    *   Briefly note any key points or keywords to emphasize during specific steps.
+    *   Briefly note any key points or keywords to emphasize during specific steps. If a strategic angle was provided, highlight key phrases or concepts from the angle to emphasize visually or verbally.
 *   **Screen Recording & Delivery:**
     *   For each script step, what exactly should be shown on screen? (e.g., "Step 1: Show the ${appSoftware || 'interface'} and click on the 'File' menu...").
     *   Advise on clear, direct verbal delivery for each step.
@@ -610,11 +623,12 @@ Based on this data, provide:
     *   Is it crowded, sparse, or dominated by old content?
     *   Are there videos from channels with relatively low subscriber counts getting high views (this indicates strong organic topic demand)?
     *   What is the general sentiment or quality of existing top videos?
+    *   Critically, if keywords like "untapped," "secrets," "hidden," or similar appear in the original idea text ("${ideaText}"), assess if the competitor data truly reflects a gap related to these "untapped" aspects. For example, if "${ideaText}" is "Untapped ChatGPT Prompt Secrets," and no competitor videos explicitly cover "prompt secrets" or "bad results," highlight this as a significant content gap.
 
 2.  **Actionable Strategic Angles (2-3 distinct bullet points):** Suggest specific, actionable angles or improvements a new video on "${ideaText}" could focus on to differentiate itself and offer more value. For each angle, be specific and explain *why* it's a good strategy based on the competitor data (or lack thereof).
     *   **Content Gaps/Depth:** If competitors miss key aspects or only cover them superficially, suggest covering these. (e.g., "Dive deeper into [specific sub-topic] which current videos only touch on.")
     *   **Freshness/Updates:** If existing videos are old (e.g., >1-2 years), emphasize creating an up-to-date version. (e.g., "Create an 'Update for [Current Year]' guide, as most top videos are from [Year].")
-    *   **Unique Value Proposition:** How can the new video be clearer, more engaging, solve a specific problem better, or offer a unique perspective? (e.g., "Focus on a hands-on, project-based tutorial if others are mostly theoretical," or "Offer a 'pro tips' angle if beginner content is saturated.")
+    *   **Unique Value Proposition:** How can the new video be clearer, more engaging, solve a specific problem better, or offer a unique perspective? (e.g., "Focus on a hands-on, project-based tutorial if others are mostly theoretical," or "Offer a 'pro tips' angle if beginner content is saturated.") If the idea implies an "untapped" or "secret" angle that competitors don't address, make this the primary value proposition.
     *   **Niche Down/Audience Focus:** Could targeting a specific sub-audience or use-case be beneficial? (e.g., "Create a guide specifically for [e.g., small business owners] using [Tool] for [Task related to IdeaText]").
     *   **Leverage View/Subscriber Discrepancies:** If videos from channels with few subscribers have high views, this signals strong topic interest and potentially lower quality competition. How can this be capitalized on? (e.g., "Multiple smaller channels achieve high views, indicating strong topic demand. A high-quality, comprehensive video could dominate.")
     *   **Title/Thumbnail Strategy Hint:** Briefly suggest how the title/thumbnail could reflect the unique angle. (e.g., "Angle your title to highlight the 'for [Specific Audience]' aspect.")

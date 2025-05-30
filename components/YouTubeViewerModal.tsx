@@ -1,5 +1,6 @@
 
 
+
 import React, { useState, useMemo } from 'react';
 import { VideoIdea, YouTubeVideoResult, UntappedScore } from '../types';
 import { LoadingSpinner } from './ui/LoadingSpinner';
@@ -176,17 +177,20 @@ export const YouTubeViewerModal: React.FC<YouTubeViewerModalProps> = ({ isOpen, 
 
               {sortedResults.length > 0 ? (
                 <div className="space-y-5">
-                  <div className="flex justify-between items-center mb-3">
+                  <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-3 space-y-2 sm:space-y-0">
                     <h3 className="text-lg font-semibold text-sky-200">Similar YouTube Videos:</h3>
                     <Select
                         id="youtubeSortSelect"
                         options={sortOptions}
                         value={sortOrder}
                         onChange={(e) => setSortOrder(e.target.value as SortOption)}
-                        className="!py-2 !text-sm !w-auto !min-w-[180px]"
-                        containerClassName="w-auto"
+                        className="!py-2 !text-sm !w-full sm:!w-auto !min-w-[180px]"
+                        containerClassName="w-full sm:w-auto"
                     />
                   </div>
+                  <p className="text-xs text-[var(--text-tertiary)] -mt-2 mb-3 italic">
+                    Search results based on idea title: "{idea.text.length > 60 ? idea.text.substring(0,57) + '...' : idea.text}"
+                  </p>
                   {sortedResults.map((video, index) => (
                     <div key={video.videoId + '-' + index} className="animate-fadeIn" style={{animationDelay: `${index * 0.07}s`}}>
                         <YouTubeVideoCard video={video} />
