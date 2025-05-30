@@ -4,10 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>YouTube Idea Command Center</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- <script src="https://cdn.tailwindcss.com"></script> REMOVED Tailwind CDN -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/index.css"> <!-- ADDED local CSS -->
   <style>
     :root {
       --base-bg-start: #000000; /* Pure black base */
@@ -47,7 +48,47 @@
       color: var(--text-primary);
       -webkit-font-smoothing: antialiased;
       -moz-osx-font-smoothing: grayscale;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
     }
+
+    #root {
+      flex-grow: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .diagnostic-loading-message {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 40px;
+      font-size: 1.2rem;
+      color: #FFF; /* White text */
+      height: 100%; /* Take full height of parent */
+      flex-grow: 1;
+    }
+    .diagnostic-loading-message strong {
+        font-size: 1.5rem;
+        margin-bottom: 15px;
+        color: #FFCC00; /* Yellow for emphasis */
+    }
+     .diagnostic-loading-message p {
+        margin-bottom: 10px;
+        color: #DDD;
+     }
+     .diagnostic-loading-message code {
+        background-color: #333;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-family: monospace;
+        color: #FFA500; /* Orange for code */
+     }
+
 
     .glass-card {
       background-color: var(--glass-bg-main-start); /* Using background-color as base per PRD */
@@ -210,19 +251,32 @@
     }
 
   </style>
+<!-- Import map can be removed if Vite handles these dependencies from package.json -->
+<!-- 
 <script type="importmap">
 {
   "imports": {
     "react": "https://esm.sh/react@^19.1.0",
     "react-dom/": "https://esm.sh/react-dom@^19.1.0/",
     "react/": "https://esm.sh/react@^19.1.0/",
-    "@google/genai": "https://esm.sh/@google/genai@^1.1.0"
+    "@google/genai": "https://esm.sh/@google/genai@^1.1.0",
+    "vite": "https://esm.sh/vite@^6.3.5",
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^4.5.0"
   }
 }
 </script>
+-->
 </head>
 <body class="antialiased">
-  <div id="root"></div>
+  <div id="root">
+    <div class="diagnostic-loading-message">
+      <strong>Attempting to load YouTube Idea Command Center...</strong>
+      <p>If you see this message for more than a few seconds, the application's JavaScript might not be loading or running correctly in this preview environment.</p>
+      <p>This can happen if Google AI Studio Preview doesn't fully support the Vite development server or build process needed for this React+TypeScript application.</p>
+      <p>The script entry point is <code>&lt;script type="module" src="/index.tsx"&gt;&lt;/script&gt;</code>. Browsers need a dev server (like Vite's) to process <code>.tsx</code> files.</p>
+      <p>Your deployed Vercel version should work correctly as Vercel understands how to build Vite projects.</p>
+    </div>
+  </div>
   <script type="module" src="/index.tsx"></script>
 </body>
 </html><link rel="stylesheet" href="index.css">

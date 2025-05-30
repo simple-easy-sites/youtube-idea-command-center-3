@@ -1,21 +1,23 @@
+
 // services/youtubeService.ts
 
 /**
  * WARNING: Using API keys directly in client-side code (like this)
- * exposes them to users and is a security risk. For production,
- * it is STRONGLY RECOMMENDED to proxy API calls through a secure
- * backend server where API keys can be stored safely.
+ * exposes them to users and is a security risk if not properly restricted.
+ * For production, ensure the YOUTUBE_API_KEY is restricted (e.g., HTTP referrers)
+ * in the Google Cloud Console.
  * 
- * The YOUTUBE_API_KEY is expected to be injected via Vite's process.env handling.
- * Ensure your .env.local (or .env) file has YOUTUBE_API_KEY set.
+ * The YOUTUBE_API_KEY is expected to be injected via Vite's import.meta.env handling.
+ * Ensure your Vercel environment variables are set to VITE_YOUTUBE_API_KEY.
  */
 
 import { YouTubeVideoResult } from '../types';
 
-const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
+// Use import.meta.env for Vite environment variables
+const YOUTUBE_API_KEY = import.meta.env.VITE_YOUTUBE_API_KEY;
 
-if (!YOUTUBE_API_KEY || YOUTUBE_API_KEY === "YOUR_ACTUAL_YOUTUBE_API_KEY_HERE" || YOUTUBE_API_KEY === "MISSING_YOUTUBE_API_KEY") { // Added common placeholder
-  console.error("YouTube API key is missing or a placeholder (process.env.YOUTUBE_API_KEY). Real YouTube searches will fail. Ensure it's set in your .env file or AI Studio Secrets.");
+if (!YOUTUBE_API_KEY || YOUTUBE_API_KEY === "YOUR_ACTUAL_YOUTUBE_API_KEY_HERE" || YOUTUBE_API_KEY === "MISSING_YOUTUBE_API_KEY") {
+  console.error("YouTube Service: VITE_YOUTUBE_API_KEY is missing or a placeholder. Real YouTube searches will fail. Ensure VITE_YOUTUBE_API_KEY is set in Vercel Environment Variables.");
 }
 
 export const searchYouTubeForExistingVideos = async (
@@ -23,7 +25,7 @@ export const searchYouTubeForExistingVideos = async (
   maxResults: number = 5
 ): Promise<YouTubeVideoResult[]> => {
   if (!YOUTUBE_API_KEY || YOUTUBE_API_KEY === "YOUR_ACTUAL_YOUTUBE_API_KEY_HERE" || YOUTUBE_API_KEY === "MISSING_YOUTUBE_API_KEY") {
-    console.warn("YouTube API key is not configured or is a placeholder. Returning mock data. Ensure process.env.YOUTUBE_API_KEY is correctly set.");
+    console.warn("YouTube Service: Missing/placeholder VITE_YOUTUBE_API_KEY. Returning mock data.");
     await new Promise(resolve => setTimeout(resolve, 500)); 
     const mockResults: YouTubeVideoResult[] = [];
     for (let i = 1; i <= maxResults; i++) {
@@ -144,7 +146,7 @@ export const searchYouTubeForExistingVideos = async (
             throw new Error("YouTube API quota exceeded. Please try again later or check your quota in Google Cloud Console.");
         }
         if (error.message.includes("developerKeyInvalid") || error.message.includes("API key not valid")) {
-            throw new Error("YouTube API key is invalid. Please check your .env.local file and ensure it's correct.");
+            throw new Error("YouTube API key is invalid. Please check your Vercel Environment Variables (should be VITE_YOUTUBE_API_KEY).");
         }
         if (error.message.includes(" Zugriff nicht konfiguriert") || error.message.includes("API not enabled")) { // German for "Access not configured"
              throw new Error("The YouTube Data API v3 is not enabled for your project or key. Please enable it in Google Cloud Console.");

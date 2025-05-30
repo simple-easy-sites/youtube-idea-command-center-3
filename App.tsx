@@ -74,14 +74,14 @@ const App: React.FC = () => {
       const loadedIdeas = getAllIdeas(currentProfile);
       setIdeas(loadedIdeas);
       setIsLoading(false);
-      if(loadedIdeas.length === 0 && process.env.API_KEY && process.env.API_KEY !== "MISSING_API_KEY_WILL_FAIL" && process.env.API_KEY !== "YOUR_ACTUAL_GEMINI_API_KEY_HERE") { 
+      if(loadedIdeas.length === 0 && import.meta.env.VITE_API_KEY && import.meta.env.VITE_API_KEY !== "MISSING_API_KEY_WILL_FAIL" && import.meta.env.VITE_API_KEY !== "YOUR_ACTUAL_GEMINI_API_KEY_HERE") { 
         addFlashMessage('info', `Switched to profile '${currentProfile}'. Generate some ideas or let the AI suggest a strategy.`);
       }
     } else {
       // No profile selected, clear ideas and set loading to false (or handle as "no profile selected" state)
       setIdeas([]);
       setIsLoading(false);
-      if (allProfiles.length === 0 && process.env.API_KEY && process.env.API_KEY !== "MISSING_API_KEY_WILL_FAIL" && process.env.API_KEY !== "YOUR_ACTUAL_GEMINI_API_KEY_HERE") {
+      if (allProfiles.length === 0 && import.meta.env.VITE_API_KEY && import.meta.env.VITE_API_KEY !== "MISSING_API_KEY_WILL_FAIL" && import.meta.env.VITE_API_KEY !== "YOUR_ACTUAL_GEMINI_API_KEY_HERE") {
          addFlashMessage('info', `Welcome! Please create a profile name to begin.`);
       } else if (allProfiles.length > 0) {
          addFlashMessage('info', `Please select or create a profile to manage ideas.`);
@@ -544,17 +544,24 @@ const App: React.FC = () => {
     } as CategorizedIdeas
   );
 
-  if (isLoading && (!process.env.API_KEY || process.env.API_KEY === "MISSING_API_KEY_WILL_FAIL" || process.env.API_KEY === "YOUR_ACTUAL_GEMINI_API_KEY_HERE") && !getAllIdeas(currentProfile).length) { 
+  // This is the diagnostic message block
+  const isApiKeyMissingOrPlaceholder = !import.meta.env.VITE_API_KEY || import.meta.env.VITE_API_KEY === "MISSING_API_KEY_WILL_FAIL" || import.meta.env.VITE_API_KEY === "YOUR_ACTUAL_GEMINI_API_KEY_HERE";
+  const isYouTubeApiKeyMissingOrPlaceholder = !import.meta.env.VITE_YOUTUBE_API_KEY || import.meta.env.VITE_YOUTUBE_API_KEY === "MISSING_YOUTUBE_API_KEY" || import.meta.env.VITE_YOUTUBE_API_KEY === "YOUR_ACTUAL_YOUTUBE_API_KEY_HERE";
+
+  if (isLoading && (isApiKeyMissingOrPlaceholder || isYouTubeApiKeyMissingOrPlaceholder) && !getAllIdeas(currentProfile).length) { 
       return (
-        <div className="min-h-screen bg-black text-gray-100 flex flex-col items-center justify-center p-4 text-center">
-          <div className="glass-card p-8 rounded-xl shadow-xl max-w-md border border-red-500/50">
-            <h1 className="text-3xl font-bold mb-4 text-red-400">⚠️ Gemini API Key Missing or Placeholder</h1>
-            <p className="text-lg mb-2">The Gemini API Key (process.env.API_KEY) is not correctly configured.</p>
-            <p className="mb-1">Please create a <code className="bg-gray-700/50 px-2 py-1 rounded-md text-yellow-300">.env.local</code> file in the project root.</p>
-            <p className="mb-1">Add your key like this: <code className="bg-gray-700/50 px-1 py-0.5 rounded-md text-yellow-300 whitespace-pre">API_KEY="YOUR_KEY_HERE"</code></p>
-            <p className="mb-4">For YouTube features, also add: <code className="bg-gray-700/50 px-1 py-0.5 rounded-md text-yellow-300 whitespace-pre">YOUTUBE_API_KEY="YOUR_KEY_HERE"</code></p>
-            <p className="text-sm text-gray-400">If you've just set it, please save the file and refresh the application.</p>
-            <p className="text-sm text-gray-400 mt-2">Without valid keys, AI features will use mock data or fail.</p>
+        <div className="min-h-screen bg-slate-900 text-white flex flex-col items-center justify-center p-6 text-center">
+          <div className="bg-red-800/70 p-8 rounded-xl shadow-2xl max-w-lg border-2 border-red-500 backdrop-blur-md">
+            <h1 className="text-4xl font-bold mb-6 text-yellow-300">⚠️ API Key Configuration Issue</h1>
+            {isApiKeyMissingOrPlaceholder && (
+                <p className="text-lg mb-3">The Gemini API Key (<code className="bg-slate-700 px-1 py-0.5 rounded">VITE_API_KEY</code>) is missing or uses a placeholder.</p>
+            )}
+            {isYouTubeApiKeyMissingOrPlaceholder && (
+                <p className="text-lg mb-3">The YouTube API Key (<code className="bg-slate-700 px-1 py-0.5 rounded">VITE_YOUTUBE_API_KEY</code>) is missing or uses a placeholder.</p>
+            )}
+            <p className="mb-2">Please ensure these are correctly set in your Vercel Project Settings &gt; Environment Variables.</p>
+            <p className="text-md text-gray-300 mb-5">Example: <code className="bg-slate-700 px-1 py-0.5 rounded whitespace-pre">VITE_API_KEY="your_actual_gemini_key"</code></p>
+            <p className="text-sm text-gray-400">If you've just set them, ensure the Vercel project has been redeployed. The app will use mock data or fail until valid keys are provided.</p>
           </div>
         </div>
       );

@@ -2,10 +2,11 @@
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
 import { GroundingChunk, TitleSuggestion, AIStrategicGuidance, YouTubeVideoResult } from '../types'; 
 
-const API_KEY = process.env.API_KEY;
+// Use import.meta.env for Vite environment variables
+const API_KEY = import.meta.env.VITE_API_KEY;
 
 if (!API_KEY || API_KEY === "YOUR_ACTUAL_GEMINI_API_KEY_HERE" || API_KEY === "MISSING_API_KEY_WILL_FAIL") { 
-  console.warn("API_KEY for Gemini is missing or a placeholder. AI features will use mock data or fail. Please set process.env.API_KEY in your environment (e.g., AI Studio Secrets or .env.local).");
+  console.warn("Gemini Service: VITE_API_KEY for Gemini is missing or a placeholder. AI features will use mock data or fail. Ensure VITE_API_KEY is set in Vercel Environment Variables.");
 }
 
 const ai = new GoogleGenAI({ apiKey: API_KEY || "MISSING_API_KEY_WILL_FAIL" }); 
@@ -21,7 +22,7 @@ export const generateIdeasWithGemini = async (
   allKnownNicheLabels: string[] 
 ): Promise<{ ideas: Array<{text: string, keywords: string[], aiRationale: string}>; strategicGuidance: AIStrategicGuidance | null }> => {
   if (shouldUseMockData) {
-    console.warn("Gemini (generateIdeas): Missing/placeholder API key. Returning mock data.");
+    console.warn("Gemini (generateIdeas): Missing/placeholder VITE_API_KEY. Returning mock data.");
     await new Promise(resolve => setTimeout(resolve, 500));
     const exampleNiche = niche || "Personal Finance";
     const exampleApp = appSoftware || (exampleNiche === "Personal Finance" ? "Budgeting Apps" : "Relevant Software");
@@ -175,7 +176,7 @@ export const generateVideoScriptAndInstructions = async (
   optimalKeywords?: string[] 
 ): Promise<{ script: string; instructions: string; resources: string[] }> => {
   if (shouldUseMockData) {
-      console.warn("Gemini (generateScript): Missing/placeholder API key. Returning mock data.");
+      console.warn("Gemini (generateScript): Missing/placeholder VITE_API_KEY. Returning mock data.");
       await new Promise(resolve => setTimeout(resolve, 700));
       let scriptOpening = `[MOCK SCRIPT for: "${ideaText}"]\n\nToday, I'm going to show you exactly how to ${ideaText.toLowerCase().replace(/^how to /,'').replace(/\?$/,'')}.`;
       if (optimalKeywords && optimalKeywords.length > 0) {
@@ -306,7 +307,7 @@ export const expandIdeaIntoRelatedIdeas = async (
   appSoftware: string
 ): Promise<Array<{text: string, keywords: string[]}>> => { 
   if (shouldUseMockData) {
-      console.warn("Gemini (expandIdea): Missing/placeholder API key. Returning mock data.");
+      console.warn("Gemini (expandIdea): Missing/placeholder VITE_API_KEY. Returning mock data.");
       await new Promise(resolve => setTimeout(resolve, 500));
       return [
           {
@@ -386,7 +387,7 @@ export const generateKeywordsWithGemini = async (
   appSoftware: string
 ): Promise<{ keywords: string[]; groundingChunks: GroundingChunk[] | undefined }> => {
   if (shouldUseMockData) {
-    console.warn("Gemini (generateKeywords): Missing/placeholder API key. Returning mock data.");
+    console.warn("Gemini (generateKeywords): Missing/placeholder VITE_API_KEY. Returning mock data.");
     await new Promise(resolve => setTimeout(resolve, 600));
     return {
       keywords: [
@@ -469,7 +470,7 @@ export const generateTitleSuggestionsWithGemini = async (
   keywords?: string[]
 ): Promise<TitleSuggestion[]> => {
   if (shouldUseMockData) {
-    console.warn("Gemini (generateTitleSuggestions): Missing/placeholder API key. Returning mock data.");
+    console.warn("Gemini (generateTitleSuggestions): Missing/placeholder VITE_API_KEY. Returning mock data.");
     await new Promise(resolve => setTimeout(resolve, 500));
     return [
       {
@@ -563,12 +564,12 @@ export const analyzeYouTubeCompetitorsForAngles = async (
     competitorVideos: YouTubeVideoResult[]
 ): Promise<string> => {
     if (shouldUseMockData) {
-        console.warn("Gemini (analyzeYouTubeCompetitorsForAngles): Missing/placeholder API key. Returning mock data.");
+        console.warn("Gemini (analyzeYouTubeCompetitorsForAngles): Missing/placeholder VITE_API_KEY. Returning mock data.");
         await new Promise(resolve => setTimeout(resolve, 400));
         if (competitorVideos.length === 0) return "AI ANGLE INSIGHT: No competitor videos found. This topic seems wide open! Focus on a comprehensive beginner's guide.";
         return `AI ANGLE INSIGHT: Mock analysis suggests focusing on a more up-to-date (2024) version for "${ideaText}", as existing mock videos like "${competitorVideos[0].title}" seem older. Also, consider a unique practical example not covered by others.`;
     }
-    if (!API_KEY) return 'API Key not configured. Cannot analyze competitors.';
+    if (!API_KEY) return 'API Key not configured. Cannot analyze competitors.'; // API_KEY here refers to import.meta.env.VITE_API_KEY
 
     const competitorInfo = competitorVideos
       .map(vid => `Title: "${vid.title}"\nDescription Snippet: "${vid.descriptionSnippet || 'N/A'}"\nViews: ${vid.viewCountText}\nAge: ${vid.publishedAtText}`)
