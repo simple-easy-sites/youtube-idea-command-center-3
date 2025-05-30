@@ -1,6 +1,6 @@
 
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
-import { GroundingChunk, TitleSuggestion, AIStrategicGuidance, YouTubeVideoResult } from '../types'; 
+import { GroundingChunk, TitleSuggestion, AIStrategicGuidance, YouTubeVideoResult, HighRpmNicheCategory, NEW_HIGH_RPM_CATEGORIES } from '../types'; // Added NEW_HIGH_RPM_CATEGORIES
 
 // Use import.meta.env for Vite environment variables
 const API_KEY = import.meta.env.VITE_API_KEY;
@@ -17,22 +17,22 @@ const shouldUseMockData = !API_KEY || API_KEY === "MISSING_API_KEY_WILL_FAIL" ||
 // Helper to remove common non-printable characters except standard whitespace
 const sanitizeAIResponseText = (text: string | undefined): string => {
     if (!text) return '';
-    // Allow letters, numbers, common punctuation, and standard whitespace (space, tab, newline, carriage return)
-    // Remove characters that might be problematic in UI rendering, especially from copy-paste or unusual encodings.
-    return text.replace(/[^\x20-\x7E\s\t\n\r]/g, '');
+    return text.replace(/[^\x20-\x7E\u00A0-\u00FF\s\t\n\rÀ-ž]/g, '');
 };
 
 
 export const generateIdeasWithGemini = async (
   userQuery: string, 
-  niche: string,     
+  nicheName: string, // Renamed from 'niche' to 'nicheName' for clarity
   appSoftware: string, 
-  allKnownNicheLabels: string[] 
+  // Pass the full NEW_HIGH_RPM_CATEGORIES for context, Gemini can summarize or use parts of it.
+  // No longer just allKnownNicheLabels. The prompt will guide Gemini on how to use this.
+  highRpmNicheContext: HighRpmNicheCategory[] 
 ): Promise<{ ideas: Array<{text: string, keywords: string[], aiRationale: string}>; strategicGuidance: AIStrategicGuidance | null }> => {
   if (shouldUseMockData) {
     console.warn("Gemini (generateIdeas): Missing/placeholder VITE_API_KEY. Returning mock data.");
     await new Promise(resolve => setTimeout(resolve, 500));
-    const exampleNiche = niche || "Personal Finance";
+    const exampleNiche = nicheName || "Personal Finance"; // Use nicheName
     const exampleApp = appSoftware || (exampleNiche === "Personal Finance" ? "Budgeting Apps" : "Relevant Software");
     const combinedConceptExample = userQuery || `Beginner's Guide to ${exampleApp} in ${exampleNiche}`;
     return {
@@ -44,28 +44,41 @@ export const generateIdeasWithGemini = async (
             },
             {
                 text: `Mock Idea: Troubleshooting ${exampleApp} for ${exampleNiche} - Quick Fixes`,
-                keywords: [`${exampleApp} issues ${exampleNiche}`, `fix ${exampleApp} ${niche}`, `${exampleApp} troubleshooting`],
+                keywords: [`${exampleApp} issues ${exampleNiche}`, `fix ${exampleApp} ${nicheName}`, `${exampleApp} troubleshooting`],
                 aiRationale: `Mock search indicates high interest in solving problems related to ${combinedConceptExample}. 'Quick Fixes' appeals to users looking for immediate solutions.`
             }
         ],
         strategicGuidance: {
-            mainRecommendation: niche || appSoftware || userQuery ? 
-                `STRATEGY_GUIDANCE: Mock strategy for "${userQuery || niche || appSoftware}" - Focus on practical, step-by-step problem-solving content. (Mock insight: Search for '${userQuery || appSoftware || niche} help' increased 20% last quarter; top content is text-based, indicating video opportunity.)` : 
-                "STRATEGY_GUIDANCE: Mock search suggests focusing on introductory tutorials for core concepts in Personal Finance (like budgeting, saving, understanding credit) or guides on basic investment concepts, as these typically have high search volume. (Mock Insight: 'How to budget for beginners' remains a top 10 finance query monthly; average video age is 18+ months). Ensure content is up-to-date for the current year.",
-            recommendedNiches: niche ? [] : ["AI & Machine Learning", "Software Tutorials"],
-            recommendedApps: appSoftware ? [] : [{niche: "Productivity Tools", apps: ["Notion", "OBS Studio"]}],
+            mainRecommendation: nicheName || appSoftware || userQuery ? 
+                sanitizeAIResponseText(`STRATEGY_GUIDANCE: Mock strategy for "${userQuery || nicheName || appSoftware}" - Focus on practical, step-by-step problem-solving content. (Mock insight: Search for '${userQuery || appSoftware || nicheName} help' increased 20% last quarter; top content is text-based, indicating video opportunity.)`) : 
+                sanitizeAIResponseText("STRATEGY_GUIDANCE: Mock search suggests focusing on tutorials within 'Core Finance & Wealth Management' like 'Online Banking App Tutorials' or 'Personal Investing Platform Tutorials', as these often have high RPMs and consistent demand. (Mock Insight: 'How to use [Popular Banking App]' searches remain stable; user need evergreen content). Ensure content is up-to-date for the current year."),
+            recommendedNiches: nicheName ? [] : ["AI Tools for Business", "Accounting & Bookkeeping Software Tutorials"],
+            recommendedApps: appSoftware ? [] : [{niche: "CRM Software", apps: ["Salesforce", "HubSpot CRM"]}],
             recommendedVideoTypes: ["Step-by-step Guides", "Troubleshooting Tutorials"]
         }
     };
   }
+  
+  // Prepare context of high RPM niches for the AI
+  let highRpmNicheSummaryForPrompt = "Consider these general high-value, high-RPM niche categories and example topics if providing broad strategic guidance:\n";
+  highRpmNicheContext.slice(0, 5).forEach(category => { // Limit to first 5 categories for brevity
+    highRpmNicheSummaryForPrompt += `- Category: ${category.categoryName}\n`;
+    category.niches.slice(0, 2).forEach(nicheDetail => { // Limit to first 2 niches per category
+        highRpmNicheSummaryForPrompt += `  - Example Niche Topic: ${nicheDetail.name} (e.g., for ${nicheDetail.examples.slice(0,2).join('/')})\n`;
+    });
+  });
 
-  const systemInstruction = `You are the ultimate YouTube Content Strategist and SEO Master. Your goal is to proactively identify HIGH-RPM, EVERGREEN, PERENNIAL video opportunities (topics relevant for 10-50 years from now) and generate specific, actionable video titles for a YouTube channel focused on how-to and tutorial content. You MUST use Google Search to inform ALL your suggestions.
+
+  const systemInstruction = `You are the ultimate YouTube Content Strategist and SEO Master. Your goal is to proactively identify HIGH-RPM, EVERGREEN, PERENNIAL video opportunities and generate specific, actionable video titles for a YouTube channel focused on how-to and tutorial content. You MUST use Google Search to inform ALL your suggestions.
+
+**High-RPM Niche Context (For Your Awareness):**
+${highRpmNicheSummaryForPrompt}
+While aware of these high-RPM areas, your primary focus MUST be guided by the user's specific inputs. Use the high-RPM context mainly if the user's input is very broad or they ask for general strategy.
 
 **User Input Interpretation (CRITICAL):**
 - If the user provides a "Refine AI Suggestion" (userQuery), THIS IS THEIR PRIMARY INTENT. Synthesize this with "Specific App/Software" and "Primary Focus Niche" to define the core topic.
-  - Example 1: Niche="AI & ML", App="Claude", userQuery="for video editing" -> Core Topic: "Using Claude AI for video editing tasks."
-  - Example 2: Niche="Personal Finance", App="", userQuery="using ChatGPT to budget" -> Core Topic: "Using ChatGPT for personal finance budgeting."
-- If no userQuery, combine Niche and App/Software. If only one is provided, focus on that. If neither, provide broad strategic advice.
+- If no userQuery, combine "Primary Focus Niche" (nicheName) and "Specific App/Software". If only one is provided, focus on that. 
+- If neither Niche nor App/Software nor userQuery is provided, provide broad strategic advice, potentially drawing from the high-RPM niche context.
 - The "Specific App/Software" can be a general tool (like an AI model 'Claude', 'ChatGPT') and the "Primary Focus Niche" or "userQuery" defines its application domain (e.g., 'Video Editing', 'Graphic Design').
 
 **Phase 1: Strategic Guidance (Always provide, even if brief)**
@@ -79,7 +92,7 @@ For each video title (related to the core topic):
 - The title must be compelling, directly answer a user's search intent, and incorporate optimal keywords.
 - Identify 3-5 optimal, high-search-intent, high-RPM, evergreen keywords for that specific video, validated by Google Search.
 - Provide a brief rationale explaining how Google Search results indicate this topic aligns with common search queries or addresses a widespread user need for the core topic, and what makes this idea a good opportunity based on these search insights.
-- Ensure ideas align with high-RPM areas, using Google Search to confirm current relevance.
+- Ensure ideas align with high-RPM areas where possible, using Google Search to confirm current relevance.
 
 Consider (and validate with Google Search for the core topic):
 - Emerging use cases for tools/platforms/apps that lack good tutorials.
@@ -95,26 +108,25 @@ Do NOT use numbering or bullet points for ideas/keywords/rationales. Each part o
 `;
 
   let prompt = `Generate video ideas for YouTube, leveraging Google Search to focus on topics with high search demand and clear user needs. Prioritize the user's 'Refine AI Suggestion' if provided, to define the core topic.`;
-  const hasNiche = niche && niche.trim() && niche !== "Select a Niche (or AI will suggest)";
+  const hasNiche = nicheName && nicheName.trim() && nicheName !== "Select a Niche (or AI will suggest)";
   const hasApp = appSoftware && appSoftware.trim();
   const hasUserQuery = userQuery && userQuery.trim();
 
-  let focusDescription = "Broad content strategy. Provide overarching STRATEGY_GUIDANCE based on Google Search for high-potential areas, then specific video ideas for those.";
+  let focusDescription = "Broad content strategy requested. Provide overarching STRATEGY_GUIDANCE based on Google Search for high-potential areas (referencing the provided high-RPM context if applicable), then generate specific video ideas for those general high-value areas.";
 
   if (hasUserQuery) {
     focusDescription = `User's primary focus (from 'Refine AI Suggestion'): "${userQuery.trim()}"`;
     if (hasApp) focusDescription += `, potentially applied to App/Software: "${appSoftware.trim()}"`;
-    if (hasNiche) focusDescription += `, within the general context of Niche: "${niche.trim()}"`;
+    if (hasNiche) focusDescription += `, within the general context of Niche: "${nicheName.trim()}"`;
   } else if (hasNiche && hasApp) {
-    focusDescription = `Primary focus: Niche "${niche.trim()}", App/Software "${appSoftware.trim()}".`;
+    focusDescription = `Primary focus: Niche "${nicheName.trim()}", App/Software "${appSoftware.trim()}".`;
   } else if (hasNiche) {
-    focusDescription = `Primary focus: Niche "${niche.trim()}".`;
+    focusDescription = `Primary focus: Niche "${nicheName.trim()}".`;
   } else if (hasApp) { 
     focusDescription = `Primary focus: App/Software "${appSoftware.trim()}".`;
   }
   
   prompt += `\n${focusDescription}.`;
-  prompt += `\n\nFor broader context, here are some examples of high-RPM niche areas: ${allKnownNicheLabels.slice(0,10).join('; ')}. Use these for general awareness of valuable categories, but your core focus must be on the user's specific inputs and Google Search validation for that focus.`;
   prompt += `\n\nAdhere strictly to the Output Format: STRATEGY_GUIDANCE, then Idea, then KEYWORDS, then RATIONALE, each on a new line.`;
 
   try {
@@ -131,7 +143,7 @@ Do NOT use numbering or bullet points for ideas/keywords/rationales. Each part o
     });
     
     const rawText = response.text; 
-    const text = sanitizeAIResponseText(rawText);
+    const text = sanitizeAIResponseText(rawText); 
     if (!text) {
       console.warn("Gemini API returned empty text response for idea generation.");
       return { ideas: [], strategicGuidance: null };
@@ -152,11 +164,11 @@ Do NOT use numbering or bullet points for ideas/keywords/rationales. Each part o
 
         if (lines[i+1]?.startsWith('KEYWORDS:')) {
             keywords = lines[i+1].replace('KEYWORDS:', '').split(',').map(k => k.trim()).filter(k => k);
-            i++; // Consume keywords line
+            i++; 
         }
         if (lines[i+1]?.startsWith('RATIONALE:')) {
             rationale = lines[i+1].replace('RATIONALE:', '').trim();
-            i++; // Consume rationale line
+            i++; 
         }
         if (ideaText && !ideaText.startsWith("KEYWORDS:") && !ideaText.startsWith("RATIONALE:") && !ideaText.startsWith("STRATEGY_GUIDANCE:")) {
              generatedIdeas.push({ text: ideaText, keywords, aiRationale: rationale });
@@ -183,7 +195,7 @@ export const generateVideoScriptAndInstructions = async (
   appSoftware: string,
   targetLengthMinutes: number = 5,
   optimalKeywords?: string[],
-  strategicAngle?: string // NEW: Optional strategic angle
+  strategicAngle?: string 
 ): Promise<{ script: string; instructions: string; resources: string[] }> => {
   if (shouldUseMockData) {
       console.warn("Gemini (generateScript): Missing/placeholder VITE_API_KEY. Returning mock data.");
@@ -196,12 +208,12 @@ export const generateVideoScriptAndInstructions = async (
         scriptOpening += `\n(Strategic Angle for this script: ${strategicAngle.substring(0,100)}...)`;
       }
       return {
-          script: `${scriptOpening}\n\n**Step 1: Initial Setup**\n- Briefly explain the first crucial step for ${ideaText.toLowerCase().replace(/^how to /,'').replace(/\?$/,'')}.\n- For example, if setting up a budget for Rent: $1800, Groceries: $350, Utilities: $150.\n\n**Step 2: Core Process**\n- Detail the main actions for ${appSoftware || 'the task'}.\n- If you're finding this helpful, please take a moment to like this video and subscribe for more tutorials like this. Now, let's continue with the next step...\n\n**Step 3: Finalization & Tips**\n- Cover any concluding actions and offer one quick tip. \n\nThat's how you ${ideaText.toLowerCase().replace(/^how to /,'').replace(/\?$/,'')}. How have you used ${appSoftware || 'this method'} for ${niche}? Let us know in the comments below! If this was helpful, please like and subscribe for more!`,
-          instructions: `[MOCK VIDEO INSTRUCTIONS for "${ideaText}"]\n\n**1. Recording Setup:**\n- Ensure OBS Studio is ready for a single-take recording.\n- Have notes for keywords: ${optimalKeywords ? optimalKeywords.join(', ') : 'N/A'}.\n\n**2. Delivery:**\n- Speak clearly and directly. Move from step to step without filler.\n- Show on screen what's being described for ${appSoftware || 'the process'}.\n\n**3. Visuals:**\n- Minimal on-screen text needed if delivery is clear. Maybe a title card.`,
+          script: sanitizeAIResponseText(`${scriptOpening}\n\n**Step 1: Initial Setup**\n- Briefly explain the first crucial step for ${ideaText.toLowerCase().replace(/^how to /,'').replace(/\?$/,'')}.\n- For example, if setting up a budget for Rent: $1800, Groceries: $350, Utilities: $150.\n\n**Step 2: Core Process**\n- Detail the main actions for ${appSoftware || 'the task'}.\n- If you're finding this helpful, please take a moment to like this video and subscribe for more tutorials like this. Now, let's continue with the next step...\n\n**Step 3: Finalization & Tips**\n- Cover any concluding actions and offer one quick tip. \n\nThat's how you ${ideaText.toLowerCase().replace(/^how to /,'').replace(/\?$/,'')}. How have you used ${appSoftware || 'this method'} for ${niche}? Let us know in the comments below! If this was helpful, please like and subscribe for more!`),
+          instructions: sanitizeAIResponseText(`[MOCK VIDEO INSTRUCTIONS for "${ideaText}"]\n\n**1. Recording Setup:**\n- Ensure OBS Studio is ready for a single-take recording.\n- Have notes for keywords: ${optimalKeywords ? optimalKeywords.join(', ') : 'N/A'}.\n\n**2. Delivery:**\n- Speak clearly and directly. Move from step to step without filler.\n- Show on screen what's being described for ${appSoftware || 'the process'}.\n\n**3. Visuals:**\n- Minimal on-screen text needed if delivery is clear. Maybe a title card.`),
           resources: [
             `Official ${appSoftware || niche} quick start guide (Search: "${appSoftware || niche} quick start")`,
             `OBS Studio setup tutorial (Search: "OBS Studio beginner tutorial")`,
-          ]
+          ].map(r => sanitizeAIResponseText(r))
       };
   }
 
@@ -218,7 +230,7 @@ The niche is '${niche}'${appSoftware ? ` and the software/app in focus is '${app
 ${optimalKeywords && optimalKeywords.length > 0 ? `Key SEO terms to naturally incorporate: ${optimalKeywords.join(', ')}.` : ''}
 `;
 
-  if (strategicAngle && strategicAngle.trim() !== "" && !strategicAngle.toLowerCase().includes("error during analysis")) {
+  if (strategicAngle && strategicAngle.trim() !== "" && !strategicAngle.toLowerCase().includes("error during analysis") && !strategicAngle.toLowerCase().includes("error during generation")) {
     prompt += `\n**CRITICAL STRATEGIC ANGLE TO INCORPORATE:**\n${strategicAngle}\nThe script's content, examples, and tone MUST reflect and deliver on this strategic angle. Emphasize the unique selling points or insights mentioned in this angle throughout the script.\n`;
     systemInstruction += `\nThe script MUST align with and highlight the provided CRITICAL STRATEGIC ANGLE. All parts of the script, especially the introduction, core examples, and conclusion, should be tailored to reinforce this angle.`;
   }
@@ -287,41 +299,45 @@ Begin Generation:
     });
 
     const rawText = response.text;
-    const sanitizedRawText = sanitizeAIResponseText(rawText);
+    const sanitizedRawText = sanitizeAIResponseText(rawText); 
 
      if (!sanitizedRawText) {
         console.warn("Gemini API returned empty text response for script generation.");
-        return { script: 'Script generation failed: Empty response from AI.', instructions: 'Instructions generation failed.', resources: [] };
+        return { script: sanitizeAIResponseText('Script generation failed: Empty response from AI.'), instructions: sanitizeAIResponseText('Instructions generation failed.'), resources: [] };
     }
 
-    let script = 'Script generation failed: Could not parse Part 1.';
-    let instructions = 'Instructions generation failed: Could not parse Part 2.';
+    let script = sanitizeAIResponseText('Script generation failed: Could not parse Part 1.');
+    let instructions = sanitizeAIResponseText('Instructions generation failed: Could not parse Part 2.');
     let resources: string[] = [];
 
     const scriptMatch = sanitizedRawText.match(/\*\*Part 1: Video Script\*\*\s*([\s\S]*?)(?=\*\*Part 2: Video Production Instructions\*\*|$)/);
     if (scriptMatch && scriptMatch[1]) {
-        script = scriptMatch[1].trim();
+        script = sanitizeAIResponseText(scriptMatch[1].trim());
     }
 
     const instructionsMatch = sanitizedRawText.match(/\*\*Part 2: Video Production Instructions\*\*\s*([\s\S]*?)(?=\*\*Part 3: Suggested Resources\*\*|$)/);
     if (instructionsMatch && instructionsMatch[1]) {
-        instructions = instructionsMatch[1].trim();
+        instructions = sanitizeAIResponseText(instructionsMatch[1].trim());
     }
 
     const resourcesMatch = sanitizedRawText.match(/\*\*Part 3: Suggested Resources\*\*\s*([\s\S]*)/);
     if (resourcesMatch && resourcesMatch[1]) {
-        resources = resourcesMatch[1].trim().split('\n')
+        resources = sanitizeAIResponseText(resourcesMatch[1].trim()).split('\n')
                       .map(r => r.replace(/^(\* |- )/,'').trim()) 
                       .filter(r => r.length > 5); 
     }
     
-    return { script, instructions, resources };
+    return { 
+        script: script, 
+        instructions: instructions, 
+        resources: resources.map(r => sanitizeAIResponseText(r)) 
+    };
 
   } catch (error) {
     console.error('Error calling Gemini API for script generation:', error);
     let message = 'An unknown error occurred during script generation.';
     if (error instanceof Error) message = `Gemini API error for script: ${error.message}`;
-    return { script: `Script Generation Error: ${message}`, instructions: 'Instructions generation failed due to API error.', resources: [] };
+    return { script: sanitizeAIResponseText(`Script Generation Error: ${message}`), instructions: sanitizeAIResponseText('Instructions generation failed due to API error.'), resources: [] };
   }
 };
 
@@ -335,15 +351,15 @@ export const expandIdeaIntoRelatedIdeas = async (
       await new Promise(resolve => setTimeout(resolve, 500));
       return [
           {
-            text: `[MOCK] Advanced Techniques for: "${ideaText.substring(0,30)}..." using ${appSoftware || 'related tools'} in ${niche}. Focus: Hyper-specific example 1.`,
+            text: sanitizeAIResponseText(`[MOCK] Advanced Techniques for: "${ideaText.substring(0,30)}..." using ${appSoftware || 'related tools'} in ${niche}. Focus: Hyper-specific example 1.`),
             keywords: [`advanced ${appSoftware || niche}`, `${ideaText.substring(0,10)} expert tricks`, `${niche} pro guide`]
           },
           {
-            text: `[MOCK] Troubleshooting rare error XYZ with ${appSoftware || 'this topic'} for "${ideaText.substring(0,20)}..." for niche users.`,
+            text: sanitizeAIResponseText(`[MOCK] Troubleshooting rare error XYZ with ${appSoftware || 'this topic'} for "${ideaText.substring(0,20)}..." for niche users.`),
             keywords: [`${appSoftware || niche} specific error XYZ`, `fix ${ideaText.substring(0,10)} rare problem`, `${niche} specific troubleshooting`]
           },
            {
-            text: `[MOCK] How to use ${appSoftware || 'this tool'} to achieve [Hyper-Specific Task, e.g., 'automate window washing schedules'] within the ${niche} context.`,
+            text: sanitizeAIResponseText(`[MOCK] How to use ${appSoftware || 'this tool'} to achieve [Hyper-Specific Task, e.g., 'automate window washing schedules'] within the ${niche} context.`),
             keywords: [`${appSoftware || niche} for window washing`, `automate specific task ${niche}`, `unusual uses of ${appSoftware}`]
           }
       ];
@@ -379,7 +395,7 @@ KEYWORDS: dynamic pivot tables, Excel sales report, monthly sales tracking, Exce
     });
 
     const rawText = response.text; 
-    const text = sanitizeAIResponseText(rawText);
+    const text = sanitizeAIResponseText(rawText); 
 
     if (!text) {
         console.warn("Gemini API returned empty text response for idea expansion.");
@@ -398,7 +414,7 @@ KEYWORDS: dynamic pivot tables, Excel sales report, monthly sales tracking, Exce
             keywords = lines[i+1].replace('KEYWORDS:', '').split(',').map(k => k.trim()).filter(k => k);
             i++; 
         }
-        if (ideaTitle.length > 10 && ideaTitle.length < 200) { // Increased max length for more descriptive hyper-specific titles
+        if (ideaTitle.length > 10 && ideaTitle.length < 200) { 
             expandedIdeasWithKeywords.push({ text: ideaTitle, keywords });
         }
     }
@@ -440,13 +456,14 @@ export const generateKeywordsWithGemini = async (
 For a video idea titled: "${ideaText}"
 Niche: "${niche}"
 ${appSoftware ? `App/Software in focus: "${appSoftware}"\n` : 'No specific app/software is the focus, consider general niche terms.\n'}
-Use Google Search to analyze top-ranking content, common search queries, and related terms for this specific video topic within the given niche ${appSoftware ? `and app/software` : ''}.
-Based on your search findings, identify and suggest 5-7 highly relevant and effective SEO keywords or keyphrases.
-Focus on terms that indicate a user is looking for a specific solution or "how-to" guide related to the video idea.
+Use Google Search to analyze top-ranking content, common search queries, and related terms for this specific video topic.
+Based on your search findings, identify and suggest 5-7 highly relevant SEO keywords or keyphrases that demonstrate clear user search intent and are likely to have decent search volume.
+Focus on terms that users are *actually typing* when looking for a solution or "how-to" guide related to the video idea.
 Include a mix of:
 1.  Core terms directly from the title/niche/${appSoftware ? 'app' : 'general topic'}.
-2.  Long-tail keywords representing specific problems or questions (e.g., "how to fix [specific error] in ${appSoftware || '[relevant tool/area]'}").
-3.  Keywords indicating user intent (e.g., "tutorial," "guide," "troubleshooting," "for beginners," "advanced").
+2.  Long-tail keywords representing specific problems, questions, or use-cases (e.g., "how to fix [specific error] in ${appSoftware || '[relevant tool/area]'} for [specific purpose/audience]").
+3.  Keywords indicating user intent (e.g., "tutorial," "guide," "troubleshooting," "for beginners," "advanced," "alternative," "vs").
+4.  Consider question-based keywords if relevant ("what is X", "how does X work").
 
 Return ONLY the list of keywords/keyphrases, each on a new line.
 Do not use numbering, bullet points, or any introductory/concluding remarks.
@@ -456,6 +473,8 @@ how to create budget in Excel
 personal finance Excel spreadsheet
 Excel for budgeting beginners
 free Excel budget planner
+what is the best way to make a budget in excel
+excel budget template for students
 `;
 
   try {
@@ -471,7 +490,7 @@ free Excel budget planner
     });
 
     const rawText = response.text; 
-    const text = sanitizeAIResponseText(rawText);
+    const text = sanitizeAIResponseText(rawText); 
     const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks as GroundingChunk[] | undefined;
 
     if (!text) {
@@ -507,33 +526,34 @@ export const generateTitleSuggestionsWithGemini = async (
     await new Promise(resolve => setTimeout(resolve, 500));
     return [
       {
-        suggestedTitle: `[MOCK] REVEALED: The Secret to Using ${appSoftware || 'Topic'} for ${niche}!`,
-        rationale: "Uses a stronger hook ('REVEALED', 'Secret') and directly mentions the benefit."
+        suggestedTitle: sanitizeAIResponseText(`[MOCK] REVEALED: The Secret to Using ${appSoftware || 'Topic'} for ${niche}!`),
+        rationale: sanitizeAIResponseText("Uses a stronger hook ('REVEALED', 'Secret') and directly mentions the benefit.")
       },
       {
-        suggestedTitle: `[MOCK] ${appSoftware || 'Topic'} ${niche} Tutorial: Ultimate Guide 2024`,
-        rationale: "More SEO-friendly, includes 'Tutorial', 'Ultimate Guide', and current year."
+        suggestedTitle: sanitizeAIResponseText(`[MOCK] ${appSoftware || 'Topic'} ${niche} Tutorial: Ultimate Guide 2024`),
+        rationale: sanitizeAIResponseText("More SEO-friendly, includes 'Tutorial', 'Ultimate Guide', and current year.")
       }
     ];
   }
 
   const systemInstruction = `You are an expert YouTube video title strategist and SEO copywriter.
 Your goal is to analyze a given video title and suggest 2-3 optimized alternatives, explaining your reasoning.
-Focus on maximizing Click-Through Rate (CTR), improving SEO, and ensuring clarity. Aim for titles that sound compelling and hint at unique value or an "untapped" angle if the original idea lends itself to that.`;
+Focus on maximizing Click-Through Rate (CTR), improving SEO, and ensuring clarity. Aim for titles that sound compelling and hint at unique value or an "untapped pocket" if the original idea and keywords suggest such an angle.
+Use Google Search grounding to understand what phrases have search volume and how existing content is titled.`;
 
   const userPrompt = `Video Idea Details:
 - Original Title: "${originalTitle}"
 - Niche: "${niche}"
 ${appSoftware ? `- App/Software Focus: "${appSoftware}"\n` : ''}
-${keywords && keywords.length > 0 ? `- Relevant Keywords to Consider for SEO: ${keywords.join(', ')}\n` : ''}
+${keywords && keywords.length > 0 ? `- Relevant Keywords to Consider for SEO & Untapped Angles: ${keywords.join(', ')}\n` : ''}
 
 Task:
-1.  Analyze the "Original Title" for its strengths and weaknesses regarding:
-    *   Click-Through Rate (CTR) potential (e.g., curiosity, urgency, benefit-driven, specificity, uniqueness).
-    *   SEO (incorporation of relevant keywords, searchability).
-    *   Clarity and conciseness.
-2.  Suggest 2-3 alternative titles that improve upon the original. Each suggestion should aim to be highly compelling and optimized. If possible, make titles sound like they are covering something "untapped" or a "secret."
-3.  For each suggested title, provide a brief, clear rationale (1-2 sentences) explaining *why* it's a good alternative and what specific aspect it improves (e.g., "stronger emotional hook," "better keyword targeting for [term]," "clearer benefit to the viewer," "implies an underserved angle").
+1.  Analyze the "Original Title."
+2.  Suggest 2-3 alternative titles. Each suggestion should aim to be highly compelling and optimized. 
+    *   If keywords suggest an "untapped pocket" (e.g., specific problem + solution with less competition), craft titles that exploit this unique angle.
+    *   Titles should incorporate strong keywords that people are actually searching for (validated by your Google Search tool).
+    *   Prioritize clarity, strong hooks (curiosity, benefit, urgency), and SEO-friendliness.
+3.  For each suggested title, provide a brief, clear rationale (1-2 sentences) explaining *why* it's a good alternative. The rationale should explain how it targets an "untapped pocket" if applicable, or how it improves CTR/SEO based on search insights.
 
 Output Format:
 Provide exactly 2 or 3 suggestions. Each suggestion MUST follow this strict format, with "---" (three hyphens) as a separator between suggestions:
@@ -543,9 +563,9 @@ RATIONALE: [Your Rationale Here]
 SUGGESTION: [Another New Title Suggestion Here]
 RATIONALE: [Rationale for the other title]
 
-Example of a single entry:
-SUGGESTION: Unlock PRO Secrets: Master Photoshop's Hidden Liquify Tool in 10 Mins!
-RATIONALE: Uses "PRO Secrets" & "Hidden Tool" for curiosity and "Master in 10 Minutes" for a clear, fast benefit. Stronger CTR potential by highlighting an untapped/specific feature.
+Example for "untapped pocket" rationale:
+SUGGESTION: FIX Git 'Unrelated Histories' FAST (Beginner-Friendly 2024)
+RATIONALE: Targets a specific error ("Unrelated Histories") with strong user intent ("FIX," "FAST"). "Beginner-Friendly 2024" addresses a potential "untapped pocket" if existing solutions are complex or outdated, as confirmed by Google Search showing few recent, simple guides for this specific error.
 
 Do NOT include any other text, preamble, or concluding remarks outside of this structured format. The response must start directly with "SUGGESTION:".`;
 
@@ -555,6 +575,7 @@ Do NOT include any other text, preamble, or concluding remarks outside of this s
       contents: userPrompt,
       config: {
         systemInstruction: systemInstruction,
+        tools: [{ googleSearch: {} }], 
         temperature: 0.72, 
         topP: 0.9,
         topK: 50,
@@ -562,7 +583,7 @@ Do NOT include any other text, preamble, or concluding remarks outside of this s
     });
 
     const rawText = response.text;
-    const text = sanitizeAIResponseText(rawText);
+    const text = sanitizeAIResponseText(rawText); 
 
     if (!text) {
       console.warn("Gemini API returned empty text response for title suggestions.");
@@ -601,11 +622,11 @@ export const analyzeYouTubeCompetitorsForAngles = async (
     if (shouldUseMockData) {
         console.warn("Gemini (analyzeYouTubeCompetitorsForAngles): Missing/placeholder VITE_API_KEY. Returning mock data.");
         await new Promise(resolve => setTimeout(resolve, 400));
-        if (competitorVideos.length === 0) return "AI STRATEGIC ANGLE:\nOverall Assessment: Mock: No competitor videos found. This topic seems wide open!\nActionable Angles:\n*   Focus on a comprehensive beginner's guide, clearly dated for the current year (e.g., 2024).\n*   Highlight unique benefits or ease of use if applicable to the idea.\n*   Create a visually appealing thumbnail that stands out.";
+        if (competitorVideos.length === 0) return sanitizeAIResponseText("AI STRATEGIC ANGLE:\nOverall Assessment: Mock: No competitor videos found. This topic seems wide open!\nActionable Angles:\n*   Focus on a comprehensive beginner's guide, clearly dated for the current year (e.g., 2024).\n*   Highlight unique benefits or ease of use if applicable to the idea.\n*   Create a visually appealing thumbnail that stands out.");
         const mockComp = competitorVideos[0];
-        return `AI STRATEGIC ANGLE:\nOverall Assessment: Mock: Given competitors like "${mockComp.title}" (Views: ${mockComp.viewCountText}, Age: ${mockComp.publishedAtText}, Channel Subs: ${mockComp.channelSubscriberCountText}), there's some existing content.\nActionable Angles:\n*   Consider an up-to-date (e.g., 2024) version for "${ideaText}" if competitor content is older.\n*   Explore a unique practical example or a niche application not covered by others.\n*   If competitors have low subscriber counts but high views on similar topics, it indicates strong demand; focus on higher quality production or clearer explanations.`;
+        return sanitizeAIResponseText(`AI STRATEGIC ANGLE:\nOverall Assessment: Mock: Given competitors like "${mockComp.title}" (Views: ${mockComp.viewCountText}, Age: ${mockComp.publishedAtText}, Channel Subs: ${mockComp.channelSubscriberCountText}), there's some existing content.\nActionable Angles:\n*   Consider an up-to-date (e.g., 2024) version for "${ideaText}" if competitor content is older.\n*   Explore a unique practical example or a niche application not covered by others.\n*   If competitors have low subscriber counts but high views on similar topics, it indicates strong demand; focus on higher quality production or clearer explanations.`);
     }
-    if (!API_KEY) return 'AI STRATEGIC ANGLE:\nOverall Assessment: API Key not configured. Cannot analyze competitors.\nActionable Angles:\n*   Manually review competitor videos for gaps and opportunities.';
+    if (!API_KEY) return sanitizeAIResponseText('AI STRATEGIC ANGLE:\nOverall Assessment: API Key not configured. Cannot analyze competitors.\nActionable Angles:\n*   Manually review competitor videos for gaps and opportunities.');
 
     const competitorInfo = competitorVideos
       .map(vid => `- Title: "${vid.title}"\n  Views: ${vid.viewCountText}\n  Age: ${vid.publishedAtText}\n  Channel Subscribers: ${vid.channelSubscriberCountText || 'N/A'}\n  Description Snippet: "${vid.descriptionSnippet || 'N/A'}"`)
@@ -655,15 +676,15 @@ Actionable Angles:
         });
         
         const rawText = response.text;
-        const text = sanitizeAIResponseText(rawText);
+        const text = sanitizeAIResponseText(rawText); 
 
         if (!text) {
-          return 'AI STRATEGIC ANGLE:\nOverall Assessment: AI analysis did not return a specific insight.\nActionable Angles:\n*   Consider general best practices: up-to-date content, clear explanations, and unique examples.';
+          return sanitizeAIResponseText('AI STRATEGIC ANGLE:\nOverall Assessment: AI analysis did not return a specific insight.\nActionable Angles:\n*   Consider general best practices: up-to-date content, clear explanations, and unique examples.');
         }
         return text.trim().startsWith("AI STRATEGIC ANGLE:") ? text.trim() : `AI STRATEGIC ANGLE:\n${text.trim()}`; 
     } catch (error) {
         console.error('Error calling Gemini API for competitor analysis:', error);
         const errorMessage = error instanceof Error ? error.message : 'Unknown error during AI analysis.';
-        return `AI STRATEGIC ANGLE:\nOverall Assessment: Error during analysis - ${errorMessage}\nActionable Angles:\n*   Review competitor videos manually to identify gaps.`;
+        return sanitizeAIResponseText(`AI STRATEGIC ANGLE:\nOverall Assessment: Error during analysis - ${errorMessage}\nActionable Angles:\n*   Review competitor videos manually to identify gaps.`);
     }
 };

@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Input } from './ui/Input';
 import { Button } from './ui/Button';
 import { Select } from './ui/Select';
-import { NICHES_FOR_DROPDOWN } from '../constants';
+import { NICHES_FOR_DROPDOWN, getNicheDetailsByName } from '../constants';
 import { CollapsibleSection } from './ui/CollapsibleSection';
-
+import { HighRpmNicheDetail } from '../types'; // Import type for selectedNicheDetails
 
 interface IdeaFormProps {
   onGenerate: (userQuery: string, niche: string, appSoftware: string) => Promise<void>;
@@ -15,17 +15,33 @@ export const IdeaForm: React.FC<IdeaFormProps> = ({ onGenerate, isLoading }) => 
   const [userQuery, setUserQuery] = useState<string>('');
   const [niche, setNiche] = useState<string>(''); 
   const [appSoftware, setAppSoftware] = useState<string>('');
+  const [selectedNicheDetails, setSelectedNicheDetails] = useState<HighRpmNicheDetail | null>(null);
+
+  useEffect(() => {
+    if (niche) {
+      const details = getNicheDetailsByName(niche);
+      setSelectedNicheDetails(details || null);
+      setAppSoftware(''); // Clear app/software when niche changes
+    } else {
+      setSelectedNicheDetails(null);
+      setAppSoftware('');
+    }
+  }, [niche]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onGenerate(userQuery, niche, appSoftware);
   };
 
+  const appSoftwarePlaceholder = selectedNicheDetails?.examples?.length 
+    ? `e.g., ${selectedNicheDetails.examples.slice(0, 3).join(', ')}` 
+    : "e.g., 'ChatGPT', 'Zelle', 'Thinkorswim'";
+
   return (
     <CollapsibleSection 
         title="✨ Generate New Ideas" 
         defaultOpen={true} 
-        className="!rounded-2xl shadow-2xl !bg-opacity-30 hover:!bg-opacity-40 border border-sky-500/30" // Distinct border for main form
+        className="!rounded-2xl shadow-2xl !bg-opacity-30 hover:!bg-opacity-40 border border-sky-500/30"
         headerClassName="!py-6 !px-6 !text-2xl" 
         contentClassName="!pt-6 !pb-8 !px-6"
     >
@@ -46,11 +62,19 @@ export const IdeaForm: React.FC<IdeaFormProps> = ({ onGenerate, isLoading }) => 
             type="text"
             value={appSoftware}
             onChange={(e) => setAppSoftware(e.target.value)}
-            placeholder="e.g., 'ChatGPT', 'Zelle', 'Thinkorswim'"
+            placeholder={appSoftwarePlaceholder}
             containerClassName="animate-fadeIn" style={{animationDelay: '0.2s'}}
             className="!py-3"
           />
         </div>
+        {selectedNicheDetails && (
+          <p className="text-xs text-[var(--text-secondary)] text-center font-light animate-fadeIn" style={{ animationDelay: '0.25s' }}>
+            <strong>Niche Description:</strong> {selectedNicheDetails.description}
+            {selectedNicheDetails.examples.length > 0 && 
+              ` Some examples include: ${selectedNicheDetails.examples.join(', ')}.`
+            }
+          </p>
+        )}
          <p className="text-xs text-[var(--text-tertiary)] text-center font-light animate-fadeIn" style={{animationDelay: '0.3s'}}>
            Select a niche and/or app for tailored AI suggestions. The AI can also suggest areas if these are left broad.
         </p>
@@ -63,7 +87,7 @@ export const IdeaForm: React.FC<IdeaFormProps> = ({ onGenerate, isLoading }) => 
             value={userQuery}
             onChange={(e) => setUserQuery(e.target.value)}
             placeholder="e.g., 'Beginner guides for marketers', 'Troubleshooting login issues', 'New features for video editing'"
-            className="!text-lg !py-3.5" // Larger text and padding
+            className="!text-lg !py-3.5" 
           />
           <p className="mt-1.5 text-xs text-[var(--text-tertiary)] font-light">Further guide the AI with specifics like target audience, video style, or particular problems.</p>
         </div>
@@ -73,7 +97,7 @@ export const IdeaForm: React.FC<IdeaFormProps> = ({ onGenerate, isLoading }) => 
             variant="primary" 
             size="lg" 
             isLoading={isLoading} 
-            className="w-full animate-fadeIn !font-bold !tracking-wide" // Bolder font and tracking
+            className="w-full animate-fadeIn !font-bold !tracking-wide" 
             style={{animationDelay: '0.5s'}}
         >
           {isLoading ? 'Generating Ideas...' : 'Generate New Ideas!'}

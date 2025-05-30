@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -70,26 +71,40 @@
     input[type="url"],
     textarea,
     select {
-      color: var(--text-primary) !important; /* Force primary text color */
+      color: var(--text-primary) !important; 
       -webkit-text-fill-color: var(--text-primary) !important; /* For Safari */
+      background-color: var(--glass-bg-subtle-end) !important; /* Ensure background for contrast */
+      border: 1px solid var(--glass-border-color) !important; /* Ensure border for definition */
     }
 
     select option {
-        background-color: var(--base-bg-end) !important;
+        background-color: var(--base-bg-end) !important; /* Dark background for dropdown options */
         color: var(--text-primary) !important;
+    }
+    /* Style for the selected option displayed in the closed select box */
+    select option:checked {
+        /* Some browsers might allow this, others ignore it for the closed select */
+         color: var(--text-primary) !important;
+         background-color: var(--glass-bg-subtle-start) !important; /* Match select background */
     }
     
     /* Styling for placeholders to be less prominent but still readable */
     input::placeholder,
     textarea::placeholder {
         color: var(--text-tertiary) !important;
-        opacity: 0.8 !important; /* Ensure placeholder is not too bright */
+        opacity: 0.8 !important; 
+    }
+    /* For select placeholder (usually the first disabled option) */
+    select option[value=""][disabled] {
+        color: var(--text-tertiary) !important;
     }
     
-    select:disabled, input:disabled {
-        opacity: 0.6;
-        cursor: not-allowed;
-        background-color: rgba(55, 65, 81, 0.3) !important; /* More noticeable disabled state for selects */
+    select:disabled, input:disabled, textarea:disabled {
+        opacity: 0.6 !important;
+        cursor: not-allowed !important;
+        background-color: rgba(55, 65, 81, 0.3) !important; 
+        color: var(--text-tertiary) !important; /* Ensure disabled text is also legible */
+        -webkit-text-fill-color: var(--text-tertiary) !important;
     }
 
 
@@ -304,5 +319,6 @@
   </div>
   <script type="module" src="/index.tsx"></script>
 </body>
-</html><link rel="stylesheet" href="index.css">
+</html>
+<link rel="stylesheet" href="index.css">
 <script src="index.tsx" type="module"></script>

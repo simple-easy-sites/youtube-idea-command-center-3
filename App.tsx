@@ -1,8 +1,9 @@
 
 
 
+
 import React, { useState, useEffect, useCallback } from 'react';
-import { IdeaStatus, VideoIdea, CategorizedIdeas, FlashMessage, HIGH_RPM_NICHES, IdeaPriority, AIStrategicGuidance, GroundingChunk, TitleSuggestion, UntappedScore, YouTubeVideoResult, HighRpmNicheInfo } from './types';
+import { IdeaStatus, VideoIdea, CategorizedIdeas, FlashMessage, IdeaPriority, AIStrategicGuidance, GroundingChunk, TitleSuggestion, UntappedScore, YouTubeVideoResult, NEW_HIGH_RPM_CATEGORIES } from './types';
 import { Header } from './components/Header';
 import { IdeaForm } from './components/IdeaForm';
 import { IdeaSection } from './components/IdeaSection';
@@ -132,9 +133,7 @@ const App: React.FC = () => {
     setIsGenerating(true);
     setProactiveRecommendations(null);
     try {
-      // Pass the labels of HIGH_RPM_NICHES for contextual understanding by Gemini
-      const contextualNicheLabels = HIGH_RPM_NICHES.map(n => n.label);
-      const { ideas: generatedIdeasWithRationale, strategicGuidance } = await generateIdeasWithGemini(userQuery, niche, appSoftware, contextualNicheLabels);
+      const { ideas: generatedIdeasWithRationale, strategicGuidance } = await generateIdeasWithGemini(userQuery, niche, appSoftware, NEW_HIGH_RPM_CATEGORIES);
       
       if (strategicGuidance) {
         setProactiveRecommendations(strategicGuidance); 
