@@ -38,13 +38,75 @@ if (shouldUseMockData) {
   }
 }
 
-
+// 1. REPLACED sanitizeAIResponseText FUNCTION
 const sanitizeAIResponseText = (text: string | undefined): string => {
-    if (!text) return '';
-    // Remove C0 control characters except HT (\x09), LF (\x0A), CR (\x0D).
-    // Also remove the DEL character (\x7F).
-    // This regex targets characters in the ranges U+0000-U+0008, U+000B-U+000C, U+000E-U+001F, and U+007F.
-    return text.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
+  if (!text) return '';
+  
+  try {
+    // MUCH more conservative approach - only remove truly problematic characters
+    const cleaned = text
+      .replace(/\0/g, '') // Remove NULL bytes only
+      .replace(/\uFFFD/g, '') // Remove Unicode replacement characters  
+      .replace(/\r\n/g, '\n') // Normalize line endings
+      .replace(/\r/g, '\n')
+      .trim();
+    
+    // Test if the text is valid UTF-8
+    try {
+      return decodeURIComponent(encodeURIComponent(cleaned));
+    } catch (encodingError) {
+      console.warn('Text encoding issue detected, using cleaned text as-is');
+      return cleaned;
+    }
+  } catch (error) {
+    console.error('Error in text sanitization:', error);
+    // If sanitization fails, return original text rather than corrupting it
+    return text;
+  }
+};
+
+// 2. ADDED DEBUGGING FUNCTION
+export const debugTextIssues = (text: string, label: string = 'Text') => {
+  console.group(`🔍 Debug: ${label}`);
+  console.log('Length:', text.length);
+  console.log('First 100 chars:', JSON.stringify(text.substring(0, 100)));
+  console.log('Contains non-ASCII:', /[^\x00-\x7F]/.test(text));
+  console.log('Contains control chars:', /[\x00-\x1F\x7F]/.test(text));
+  console.log('Character codes (first 20):', text.substring(0, 20).split('').map(c => `${c}(${c.charCodeAt(0)})`));
+  console.groupEnd();
+  return text; // Return text to allow chaining if desired, though typically used for side-effect
+};
+
+// 3. ADDED RESPONSE HANDLER FUNCTION
+const handleGeminiResponse = (response: GenerateContentResponse, operation: string): string => {
+  try {
+    const rawText = response.text;
+    
+    if (!rawText) {
+      console.warn(`${operation}: Empty response from Gemini API`);
+      return '';
+    }
+
+    // Example of how you might use debugTextIssues (optional, for your own debugging)
+    // debugTextIssues(rawText, `${operation} - Raw API Response`);
+
+    // Minimal processing to preserve text integrity
+    const processedText = rawText
+      .replace(/\r\n/g, '\n') // Normalize line endings
+      .replace(/\r/g, '\n')   // Convert remaining \r to \n
+      .trim();
+
+    // Only sanitize if there are obvious encoding issues
+    if (/[\x00\uFFFD]/.test(processedText)) {
+      console.warn(`${operation}: Detected encoding issues, applying sanitization`);
+      return sanitizeAIResponseText(processedText);
+    }
+
+    return processedText;
+  } catch (error) {
+    console.error(`${operation}: Error processing Gemini response:`, error);
+    return `Error processing response: ${error instanceof Error ? error.message : 'Unknown error'}`;
+  }
 };
 
 
@@ -170,8 +232,9 @@ Do NOT use numbering or bullet points for ideas/keywords/rationales. Each part o
         }
     });
     
-    const rawText = response.text; 
-    const text = sanitizeAIResponseText(rawText); 
+    // 4. UPDATED generateIdeasWithGemini
+    const text = handleGeminiResponse(response, 'Idea Generation');
+    
     if (!text) {
       console.warn("Gemini API returned empty text response for idea generation.");
       return { ideas: [], strategicGuidance: null };
@@ -329,11 +392,11 @@ Begin Generation:
             topK: 40 
         }
     });
+    
+    // 5. UPDATED generateVideoScriptAndInstructions
+    const processedText = handleGeminiResponse(response, 'Script Generation');
 
-    const rawText = response.text;
-    const sanitizedRawText = sanitizeAIResponseText(rawText); 
-
-     if (!sanitizedRawText) {
+     if (!processedText) {
         console.warn("Gemini API returned empty text response for script generation.");
         return { script: sanitizeAIResponseText('Script generation failed: Empty response from AI.'), instructions: sanitizeAIResponseText('Instructions generation failed.'), resources: [] };
     }
@@ -342,17 +405,18 @@ Begin Generation:
     let instructions = sanitizeAIResponseText('Instructions generation failed: Could not parse Part 2.');
     let resources: string[] = [];
 
-    const scriptMatch = sanitizedRawText.match(/\*\*Part 1: Video Script\*\*\s*([\s\S]*?)(?=\*\*Part 2: Video Production Instructions\*\*|$)/);
+    // Updated regex for script matching
+    const scriptMatch = processedText.match(/\*\*Part 1: Video Script[^*]*\*\*\s*([\s\S]*?)(?=\*\*Part 2:|$)/i);
     if (scriptMatch && scriptMatch[1]) {
         script = sanitizeAIResponseText(scriptMatch[1].trim());
     }
 
-    const instructionsMatch = sanitizedRawText.match(/\*\*Part 2: Video Production Instructions\*\*\s*([\s\S]*?)(?=\*\*Part 3: Suggested Resources\*\*|$)/);
+    const instructionsMatch = processedText.match(/\*\*Part 2: Video Production Instructions\*\*\s*([\s\S]*?)(?=\*\*Part 3: Suggested Resources\*\*|$)/i);
     if (instructionsMatch && instructionsMatch[1]) {
         instructions = sanitizeAIResponseText(instructionsMatch[1].trim());
     }
 
-    const resourcesMatch = sanitizedRawText.match(/\*\*Part 3: Suggested Resources\*\*\s*([\s\S]*)/);
+    const resourcesMatch = processedText.match(/\*\*Part 3: Suggested Resources\*\*\s*([\s\S]*)/i);
     if (resourcesMatch && resourcesMatch[1]) {
         const extractedResourcesText = sanitizeAIResponseText(resourcesMatch[1].trim());
         resources = extractedResourcesText.split('\n')
@@ -433,8 +497,8 @@ KEYWORDS: dynamic pivot tables, Excel sales report, monthly sales tracking, Exce
         config: { temperature: 0.8, topP: 0.95, topK: 50 }
     });
 
-    const rawText = response.text; 
-    const text = sanitizeAIResponseText(rawText); 
+    // 6. UPDATED expandIdeaIntoRelatedIdeas
+    const text = handleGeminiResponse(response, 'Idea Expansion');
 
     if (!text) {
         console.warn("Gemini API returned empty text response for idea expansion.");
@@ -458,7 +522,7 @@ KEYWORDS: dynamic pivot tables, Excel sales report, monthly sales tracking, Exce
         }
     }
     return expandedIdeasWithKeywords.map(idea => ({ 
-        text: sanitizeAIResponseText(idea.text),
+        text: sanitizeAIResponseText(idea.text), // Still good to sanitize individual pieces if constructing
         keywords: idea.keywords.map(k => sanitizeAIResponseText(k))
     }));
 
@@ -536,8 +600,8 @@ excel budget template for students
       },
     });
 
-    const rawText = response.text; 
-    const text = sanitizeAIResponseText(rawText); 
+    // 6. UPDATED generateKeywordsWithGemini
+    const text = handleGeminiResponse(response, 'Keyword Generation');
     const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks as GroundingChunk[] | undefined;
 
     if (!text) {
@@ -547,7 +611,7 @@ excel budget template for students
 
     const generatedKeywords = text
       .split('\n')
-      .map(line => sanitizeAIResponseText(line.trim())) 
+      .map(line => sanitizeAIResponseText(line.trim())) // Sanitize individual lines if needed
       .map(line => line.replace(/^(- |\* |\d+\. )/, '').trim()) 
       .filter(line => line.length > 2 && line.length < 100); 
 
@@ -634,8 +698,8 @@ Do NOT include any other text, preamble, or concluding remarks outside of this s
       }
     });
 
-    const rawText = response.text;
-    const text = sanitizeAIResponseText(rawText); 
+    // 6. UPDATED generateTitleSuggestionsWithGemini
+    const text = handleGeminiResponse(response, 'Title Suggestions');
 
     if (!text) {
       console.warn("Gemini API returned empty text response for title suggestions.");
@@ -649,7 +713,7 @@ Do NOT include any other text, preamble, or concluding remarks outside of this s
       const suggestionMatch = part.match(/SUGGESTION:\s*([\s\S]*?)\s*RATIONALE:\s*([\s\S]*)/);
       if (suggestionMatch && suggestionMatch[1] && suggestionMatch[2]) {
         suggestions.push({
-          suggestedTitle: sanitizeAIResponseText(suggestionMatch[1].trim()), 
+          suggestedTitle: sanitizeAIResponseText(suggestionMatch[1].trim()), // Sanitize individual pieces
           rationale: sanitizeAIResponseText(suggestionMatch[2].trim()),      
         });
       } else {
@@ -681,7 +745,6 @@ export const analyzeYouTubeCompetitorsForAngles = async (
     
     if (!ai) {
       console.error("Gemini (analyzeYouTubeCompetitorsForAngles): AI SDK not initialized. Cannot make live API call.");
-      // Return a message indicating SDK is not available, rather than throwing, as this function might be called for UI display.
       return sanitizeAIResponseText('AI STRATEGIC ANGLE:\nOverall Assessment: Gemini API Key (checked from process.env.API_KEY and fallback import.meta.env.VITE_API_KEY) not configured or SDK failed to initialize. Cannot analyze competitors.\nActionable Angles:\n*   Manually review competitor videos for gaps and opportunities.');
     }
 
@@ -732,14 +795,14 @@ Actionable Angles:
             config: { temperature: 0.68, topP: 0.92, topK: 45 }
         });
         
-        const rawText = response.text;
-        const text = sanitizeAIResponseText(rawText); 
+        // 6. UPDATED analyzeYouTubeCompetitorsForAngles
+        const text = handleGeminiResponse(response, 'Competitor Analysis');
 
         if (!text) {
           return sanitizeAIResponseText('AI STRATEGIC ANGLE:\nOverall Assessment: AI analysis did not return a specific insight.\nActionable Angles:\n*   Consider general best practices: up-to-date content, clear explanations, and unique examples.');
         }
         const prefixedText = text.trim().startsWith("AI STRATEGIC ANGLE:") ? text.trim() : `AI STRATEGIC ANGLE:\n${text.trim()}`;
-        return sanitizeAIResponseText(prefixedText);
+        return sanitizeAIResponseText(prefixedText); // Sanitize the final constructed string
 
     } catch (error) {
         console.error('Error calling Gemini API for competitor analysis:', error);
