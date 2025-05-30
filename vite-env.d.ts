@@ -1,4 +1,3 @@
-/// <reference types="vite/client" />
 
 interface ImportMetaEnv {
   // For YouTube API Key, accessed via import.meta.env

@@ -2,29 +2,48 @@
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
 import { GroundingChunk, TitleSuggestion, AIStrategicGuidance, YouTubeVideoResult, HighRpmNicheCategory, NEW_HIGH_RPM_CATEGORIES } from '../types'; // Added NEW_HIGH_RPM_CATEGORIES
 
-const GEMINI_API_KEY = process.env.API_KEY;
+// Attempt to use process.env.API_KEY first, then fallback to import.meta.env.VITE_API_KEY
+let apiKeyToUse = process.env.API_KEY;
+let apiKeySource = "process.env.API_KEY";
+
+if (!apiKeyToUse || apiKeyToUse === "MISSING_API_KEY_WILL_FAIL" || apiKeyToUse === "YOUR_ACTUAL_GEMINI_API_KEY_HERE") {
+  // console.log(`Gemini Service: process.env.API_KEY ('${apiKeyToUse}') is missing or a placeholder. Checking fallback VITE_API_KEY.`);
+  const viteApiKey = import.meta.env.VITE_API_KEY;
+  if (viteApiKey && viteApiKey !== "MISSING_API_KEY_WILL_FAIL" && viteApiKey !== "YOUR_ACTUAL_GEMINI_API_KEY_HERE") {
+    apiKeyToUse = viteApiKey;
+    apiKeySource = "import.meta.env.VITE_API_KEY (fallback)";
+    console.warn(`Gemini Service: Using fallback API_KEY from import.meta.env.VITE_API_KEY. For production/Vercel, ensure API_KEY is set as a non-prefixed environment variable for the backend/build process if possible, or that VITE_API_KEY is correctly managed for frontend-only SDK use.`);
+  } else {
+    // console.log(`Gemini Service: Fallback import.meta.env.VITE_API_KEY ('${viteApiKey}') is also missing or a placeholder.`);
+  }
+}
+
+
+const GEMINI_API_KEY = apiKeyToUse;
 let ai: GoogleGenAI | null = null;
 
 // Determine if mock data should be used based on the API key status
 const shouldUseMockData = !GEMINI_API_KEY || GEMINI_API_KEY === "MISSING_API_KEY_WILL_FAIL" || GEMINI_API_KEY === "YOUR_ACTUAL_GEMINI_API_KEY_HERE";
 
 if (shouldUseMockData) {
-  console.warn(`Gemini Service: API_KEY (process.env.API_KEY) is missing, a placeholder ('${GEMINI_API_KEY}'), or SDK initialization is deliberately skipped. AI features will use mock data. Gemini SDK will not be initialized for live calls.`);
+  console.warn(`Gemini Service: API_KEY (checked from ${apiKeySource}, current value: '${GEMINI_API_KEY}') is missing, a placeholder, or SDK initialization is deliberately skipped. AI features will use mock data. Gemini SDK will not be initialized for live calls.`);
 } else if (GEMINI_API_KEY) {
   // Only attempt to initialize if GEMINI_API_KEY is present and not a placeholder
   try {
     ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+    // console.log(`Gemini Service: SDK initialized successfully using API_KEY from ${apiKeySource}.`);
   } catch (error) {
-    console.error("Gemini Service: Failed to initialize GoogleGenAI SDK. Error:", error);
-    // ai remains null. Functions should handle this, potentially by throwing or relying on shouldUseMockData for other reasons.
+    console.error(`Gemini Service: Failed to initialize GoogleGenAI SDK using API_KEY from ${apiKeySource}. Error:`, error);
+    // ai remains null. Functions should handle this.
   }
 }
-// If GEMINI_API_KEY was valid but SDK failed for another reason, 'ai' might still be null.
-// The checks within each function will handle this.
+
 
 // Helper to remove problematic control characters except standard whitespace
 const sanitizeAIResponseText = (text: string | undefined): string => {
     if (!text) return '';
+    // This regex removes C0 controls except HT, LF, CR (\t, \n, \r) and DEL.
+    // It aims to preserve common text characters while removing potentially problematic ones.
     return text.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
 };
 
@@ -66,7 +85,7 @@ export const generateIdeasWithGemini = async (
   }
   
   if (!ai) {
-    console.error("Gemini (generateIdeas): AI SDK not initialized. Cannot make live API call. This typically means API_KEY (process.env.API_KEY) is missing/placeholder or SDK failed to initialize at startup.");
+    console.error("Gemini (generateIdeas): AI SDK not initialized. Cannot make live API call. This typically means API_KEY (checked from process.env.API_KEY and fallback import.meta.env.VITE_API_KEY) is missing/placeholder or SDK failed to initialize at startup.");
     throw new Error("Gemini AI SDK is not initialized. Check API_KEY configuration and application startup logs.");
   }
 
@@ -663,7 +682,7 @@ export const analyzeYouTubeCompetitorsForAngles = async (
     if (!ai) {
       console.error("Gemini (analyzeYouTubeCompetitorsForAngles): AI SDK not initialized. Cannot make live API call.");
       // Return a message indicating SDK is not available, rather than throwing, as this function might be called for UI display.
-      return sanitizeAIResponseText('AI STRATEGIC ANGLE:\nOverall Assessment: Gemini API Key (process.env.API_KEY) not configured or SDK failed to initialize. Cannot analyze competitors.\nActionable Angles:\n*   Manually review competitor videos for gaps and opportunities.');
+      return sanitizeAIResponseText('AI STRATEGIC ANGLE:\nOverall Assessment: Gemini API Key (checked from process.env.API_KEY and fallback import.meta.env.VITE_API_KEY) not configured or SDK failed to initialize. Cannot analyze competitors.\nActionable Angles:\n*   Manually review competitor videos for gaps and opportunities.');
     }
 
     const competitorInfo = competitorVideos
