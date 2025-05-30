@@ -17,7 +17,10 @@ const shouldUseMockData = !API_KEY || API_KEY === "MISSING_API_KEY_WILL_FAIL" ||
 // Helper to remove common non-printable characters except standard whitespace
 const sanitizeAIResponseText = (text: string | undefined): string => {
     if (!text) return '';
-    return text.replace(/[^\x20-\x7E\u00A0-\u00FF\s\t\n\rÀ-ž]/g, '');
+    // Allow printable ASCII (U+0020 to U+007E), 
+    // Latin-1 Supplement (U+00A0 to U+00FF for common accented characters),
+    // and specific whitespace characters: space (already in U+0020), tab, newline, carriage return.
+    return text.replace(/[^\u0020-\u007E\u00A0-\u00FF\t\n\r]/g, '');
 };
 
 
@@ -299,10 +302,12 @@ Begin Generation:
     });
 
     const rawText = response.text;
+    // Sanitize the entire raw text first
     const sanitizedRawText = sanitizeAIResponseText(rawText); 
 
      if (!sanitizedRawText) {
         console.warn("Gemini API returned empty text response for script generation.");
+        // Ensure even error messages are sanitized
         return { script: sanitizeAIResponseText('Script generation failed: Empty response from AI.'), instructions: sanitizeAIResponseText('Instructions generation failed.'), resources: [] };
     }
 
@@ -310,8 +315,10 @@ Begin Generation:
     let instructions = sanitizeAIResponseText('Instructions generation failed: Could not parse Part 2.');
     let resources: string[] = [];
 
+    // Extract parts from the already sanitizedRawText
     const scriptMatch = sanitizedRawText.match(/\*\*Part 1: Video Script\*\*\s*([\s\S]*?)(?=\*\*Part 2: Video Production Instructions\*\*|$)/);
     if (scriptMatch && scriptMatch[1]) {
+        // Sanitize the extracted part again, just in case the regex captured something complex
         script = sanitizeAIResponseText(scriptMatch[1].trim());
     }
 
@@ -322,21 +329,23 @@ Begin Generation:
 
     const resourcesMatch = sanitizedRawText.match(/\*\*Part 3: Suggested Resources\*\*\s*([\s\S]*)/);
     if (resourcesMatch && resourcesMatch[1]) {
-        resources = sanitizeAIResponseText(resourcesMatch[1].trim()).split('\n')
-                      .map(r => r.replace(/^(\* |- )/,'').trim()) 
+        const extractedResourcesText = sanitizeAIResponseText(resourcesMatch[1].trim());
+        resources = extractedResourcesText.split('\n')
+                      .map(r => sanitizeAIResponseText(r.replace(/^(\* |- )/,'').trim())) // Sanitize each resource line
                       .filter(r => r.length > 5); 
     }
     
     return { 
         script: script, 
         instructions: instructions, 
-        resources: resources.map(r => sanitizeAIResponseText(r)) 
+        resources: resources // Already sanitized
     };
 
   } catch (error) {
     console.error('Error calling Gemini API for script generation:', error);
     let message = 'An unknown error occurred during script generation.';
     if (error instanceof Error) message = `Gemini API error for script: ${error.message}`;
+    // Ensure error messages are also sanitized
     return { script: sanitizeAIResponseText(`Script Generation Error: ${message}`), instructions: sanitizeAIResponseText('Instructions generation failed due to API error.'), resources: [] };
   }
 };
@@ -418,7 +427,10 @@ KEYWORDS: dynamic pivot tables, Excel sales report, monthly sales tracking, Exce
             expandedIdeasWithKeywords.push({ text: ideaTitle, keywords });
         }
     }
-    return expandedIdeasWithKeywords;
+    return expandedIdeasWithKeywords.map(idea => ({ // Sanitize each part
+        text: sanitizeAIResponseText(idea.text),
+        keywords: idea.keywords.map(k => sanitizeAIResponseText(k))
+    }));
 
   } catch (error) {
     console.error('Error calling Gemini API for idea expansion:', error);
@@ -444,7 +456,7 @@ export const generateKeywordsWithGemini = async (
         `how to ${ideaText.substring(0,15)} ${appSoftware || ''}`,
         `${appSoftware || niche} tips`,
         `best ${niche} ${appSoftware || 'guide'}`,
-      ],
+      ].map(k => sanitizeAIResponseText(k)), // Sanitize mock keywords
       groundingChunks: [
         { web: { uri: "https://mock-source-1.com", title: "Mock Source for Keywords 1" } },
         { web: { uri: "https://mock-source-2.com/article", title: "Another Mock Keyword Article" } },
@@ -500,7 +512,7 @@ excel budget template for students
 
     const generatedKeywords = text
       .split('\n')
-      .map(line => line.trim())
+      .map(line => sanitizeAIResponseText(line.trim())) // Sanitize each keyword
       .map(line => line.replace(/^(- |\* |\d+\. )/, '').trim()) 
       .filter(line => line.length > 2 && line.length < 100); 
 
@@ -597,8 +609,8 @@ Do NOT include any other text, preamble, or concluding remarks outside of this s
       const suggestionMatch = part.match(/SUGGESTION:\s*([\s\S]*?)\s*RATIONALE:\s*([\s\S]*)/);
       if (suggestionMatch && suggestionMatch[1] && suggestionMatch[2]) {
         suggestions.push({
-          suggestedTitle: suggestionMatch[1].trim(),
-          rationale: suggestionMatch[2].trim(),
+          suggestedTitle: sanitizeAIResponseText(suggestionMatch[1].trim()), // Sanitize
+          rationale: sanitizeAIResponseText(suggestionMatch[2].trim()),      // Sanitize
         });
       } else {
          console.warn("Could not parse title suggestion part:", part);
@@ -681,7 +693,10 @@ Actionable Angles:
         if (!text) {
           return sanitizeAIResponseText('AI STRATEGIC ANGLE:\nOverall Assessment: AI analysis did not return a specific insight.\nActionable Angles:\n*   Consider general best practices: up-to-date content, clear explanations, and unique examples.');
         }
-        return text.trim().startsWith("AI STRATEGIC ANGLE:") ? text.trim() : `AI STRATEGIC ANGLE:\n${text.trim()}`; 
+        // Ensure the output starts with the expected prefix, and sanitize the entire AI response
+        const prefixedText = text.trim().startsWith("AI STRATEGIC ANGLE:") ? text.trim() : `AI STRATEGIC ANGLE:\n${text.trim()}`;
+        return sanitizeAIResponseText(prefixedText);
+
     } catch (error) {
         console.error('Error calling Gemini API for competitor analysis:', error);
         const errorMessage = error instanceof Error ? error.message : 'Unknown error during AI analysis.';
