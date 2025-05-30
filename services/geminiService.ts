@@ -39,12 +39,11 @@ if (shouldUseMockData) {
 }
 
 
-// Helper to remove problematic control characters except standard whitespace
+// Diagnostic: Pass through text unchanged.
 const sanitizeAIResponseText = (text: string | undefined): string => {
     if (!text) return '';
-    // This regex removes C0 controls except HT, LF, CR (\t, \n, \r) and DEL.
-    // It aims to preserve common text characters while removing potentially problematic ones.
-    return text.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
+    // Previous minimal sanitization: return text.replace(/\x00/g, '');
+    return text; // Pass through directly for diagnostic purposes
 };
 
 
