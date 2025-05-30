@@ -2,47 +2,43 @@
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
 import { GroundingChunk, TitleSuggestion, AIStrategicGuidance, YouTubeVideoResult, HighRpmNicheCategory, NEW_HIGH_RPM_CATEGORIES } from '../types'; // Added NEW_HIGH_RPM_CATEGORIES
 
-// The API key for Gemini MUST be obtained from process.env.API_KEY as per SDK guidelines.
-// Assume this variable is pre-configured and made available to the client-side
-// environment (e.g., through Vite's `define` configuration if set in .env files or CI/CD).
 const GEMINI_API_KEY = process.env.API_KEY;
+let ai: GoogleGenAI | null = null;
 
-if (!GEMINI_API_KEY || GEMINI_API_KEY === "YOUR_ACTUAL_GEMINI_API_KEY_HERE" || GEMINI_API_KEY === "MISSING_API_KEY_WILL_FAIL") { 
-  console.warn("Gemini Service: API_KEY for Gemini (expected at process.env.API_KEY) is missing or a placeholder. AI features will use mock data or fail. Ensure API_KEY is set in your environment and accessible as process.env.API_KEY.");
-}
-
-// Initialize GoogleGenAI with process.env.API_KEY.
-// The SDK guidelines state to assume the key is pre-configured and valid.
-// If GEMINI_API_KEY is undefined here, the SDK call will likely fail, which is
-// the expected behavior for a missing mandatory key.
-const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY }); 
-const modelName = 'gemini-2.5-flash-preview-04-17'; 
-
-// Determine if mock data should be used based on the state of process.env.API_KEY.
+// Determine if mock data should be used based on the API key status
 const shouldUseMockData = !GEMINI_API_KEY || GEMINI_API_KEY === "MISSING_API_KEY_WILL_FAIL" || GEMINI_API_KEY === "YOUR_ACTUAL_GEMINI_API_KEY_HERE";
+
+if (shouldUseMockData) {
+  console.warn(`Gemini Service: API_KEY (process.env.API_KEY) is missing, a placeholder ('${GEMINI_API_KEY}'), or SDK initialization is deliberately skipped. AI features will use mock data. Gemini SDK will not be initialized for live calls.`);
+} else if (GEMINI_API_KEY) {
+  // Only attempt to initialize if GEMINI_API_KEY is present and not a placeholder
+  try {
+    ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+  } catch (error) {
+    console.error("Gemini Service: Failed to initialize GoogleGenAI SDK. Error:", error);
+    // ai remains null. Functions should handle this, potentially by throwing or relying on shouldUseMockData for other reasons.
+  }
+}
+// If GEMINI_API_KEY was valid but SDK failed for another reason, 'ai' might still be null.
+// The checks within each function will handle this.
 
 // Helper to remove problematic control characters except standard whitespace
 const sanitizeAIResponseText = (text: string | undefined): string => {
     if (!text) return '';
-    // Removes C0 control characters (0x00-0x1F) except for HT (0x09), LF (0x0A), CR (0x0D).
-    // Also removes DEL (0x7F).
-    // This allows a much wider range of printable Unicode characters.
     return text.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
 };
 
 
 export const generateIdeasWithGemini = async (
   userQuery: string, 
-  nicheName: string, // Renamed from 'niche' to 'nicheName' for clarity
+  nicheName: string, 
   appSoftware: string, 
-  // Pass the full NEW_HIGH_RPM_CATEGORIES for context, Gemini can summarize or use parts of it.
-  // No longer just allKnownNicheLabels. The prompt will guide Gemini on how to use this.
   highRpmNicheContext: HighRpmNicheCategory[] 
 ): Promise<{ ideas: Array<{text: string, keywords: string[], aiRationale: string}>; strategicGuidance: AIStrategicGuidance | null }> => {
   if (shouldUseMockData) {
-    console.warn("Gemini (generateIdeas): Missing/placeholder API_KEY (process.env.API_KEY). Returning mock data.");
+    console.warn("Gemini (generateIdeas): Using mock data due to API key issue (missing/placeholder or forced mock).");
     await new Promise(resolve => setTimeout(resolve, 500));
-    const exampleNiche = nicheName || "Personal Finance"; // Use nicheName
+    const exampleNiche = nicheName || "Personal Finance";
     const exampleApp = appSoftware || (exampleNiche === "Personal Finance" ? "Budgeting Apps" : "Relevant Software");
     const combinedConceptExample = userQuery || `Beginner's Guide to ${exampleApp} in ${exampleNiche}`;
     return {
@@ -69,15 +65,18 @@ export const generateIdeasWithGemini = async (
     };
   }
   
-  // Prepare context of high RPM niches for the AI
+  if (!ai) {
+    console.error("Gemini (generateIdeas): AI SDK not initialized. Cannot make live API call. This typically means API_KEY (process.env.API_KEY) is missing/placeholder or SDK failed to initialize at startup.");
+    throw new Error("Gemini AI SDK is not initialized. Check API_KEY configuration and application startup logs.");
+  }
+
   let highRpmNicheSummaryForPrompt = "Consider these general high-value, high-RPM niche categories and example topics if providing broad strategic guidance:\n";
-  highRpmNicheContext.slice(0, 5).forEach(category => { // Limit to first 5 categories for brevity
+  highRpmNicheContext.slice(0, 5).forEach(category => {
     highRpmNicheSummaryForPrompt += `- Category: ${category.categoryName}\n`;
-    category.niches.slice(0, 2).forEach(nicheDetail => { // Limit to first 2 niches per category
+    category.niches.slice(0, 2).forEach(nicheDetail => {
         highRpmNicheSummaryForPrompt += `  - Example Niche Topic: ${nicheDetail.name} (e.g., for ${nicheDetail.examples.slice(0,2).join('/')})\n`;
     });
   });
-
 
   const systemInstruction = `You are the ultimate YouTube Content Strategist and SEO Master. Your goal is to proactively identify HIGH-RPM, EVERGREEN, PERENNIAL video opportunities and generate specific, actionable video titles for a YouTube channel focused on how-to and tutorial content. You MUST use Google Search to inform ALL your suggestions.
 
@@ -141,7 +140,7 @@ Do NOT use numbering or bullet points for ideas/keywords/rationales. Each part o
 
   try {
     const response: GenerateContentResponse = await ai.models.generateContent({
-        model: modelName,
+        model: 'gemini-2.5-flash-preview-04-17',
         contents: prompt,
         config: {
             systemInstruction: systemInstruction,
@@ -208,7 +207,7 @@ export const generateVideoScriptAndInstructions = async (
   strategicAngle?: string 
 ): Promise<{ script: string; instructions: string; resources: string[] }> => {
   if (shouldUseMockData) {
-      console.warn("Gemini (generateScript): Missing/placeholder API_KEY (process.env.API_KEY). Returning mock data.");
+      console.warn("Gemini (generateScript): Using mock data due to API key issue.");
       await new Promise(resolve => setTimeout(resolve, 700));
       let scriptOpening = `[MOCK SCRIPT for: "${ideaText}"]\n\nToday, I'm going to show you exactly how to ${ideaText.toLowerCase().replace(/^how to /,'').replace(/\?$/,'')}.`;
       if (optimalKeywords && optimalKeywords.length > 0) {
@@ -227,6 +226,11 @@ export const generateVideoScriptAndInstructions = async (
       };
   }
 
+  if (!ai) {
+    console.error("Gemini (generateVideoScriptAndInstructions): AI SDK not initialized. Cannot make live API call.");
+    throw new Error("Gemini AI SDK is not initialized. Check API_KEY configuration.");
+  }
+  
   let systemInstruction = `You are an expert technical writer and YouTube instructional video script creator.
 Your output MUST be direct, concise, and highly instructional.
 The script is for a "quick and dirty," minimal-edit, OBS Studio style screen recording.
@@ -244,7 +248,6 @@ ${optimalKeywords && optimalKeywords.length > 0 ? `Key SEO terms to naturally in
     prompt += `\n**CRITICAL STRATEGIC ANGLE TO INCORPORATE:**\n${strategicAngle}\nThe script's content, examples, and tone MUST reflect and deliver on this strategic angle. Emphasize the unique selling points or insights mentioned in this angle throughout the script.\n`;
     systemInstruction += `\nThe script MUST align with and highlight the provided CRITICAL STRATEGIC ANGLE. All parts of the script, especially the introduction, core examples, and conclusion, should be tailored to reinforce this angle.`;
   }
-
 
   prompt += `
 **Part 1: Video Script (Full Text for Direct Delivery)**
@@ -298,7 +301,7 @@ Begin Generation:
 
   try {
     const response: GenerateContentResponse = await ai.models.generateContent({
-        model: modelName,
+        model: 'gemini-2.5-flash-preview-04-17',
         contents: prompt,
         config: { 
             systemInstruction: systemInstruction,
@@ -309,12 +312,10 @@ Begin Generation:
     });
 
     const rawText = response.text;
-    // Sanitize the entire raw text first
     const sanitizedRawText = sanitizeAIResponseText(rawText); 
 
      if (!sanitizedRawText) {
         console.warn("Gemini API returned empty text response for script generation.");
-        // Ensure even error messages are sanitized
         return { script: sanitizeAIResponseText('Script generation failed: Empty response from AI.'), instructions: sanitizeAIResponseText('Instructions generation failed.'), resources: [] };
     }
 
@@ -322,11 +323,8 @@ Begin Generation:
     let instructions = sanitizeAIResponseText('Instructions generation failed: Could not parse Part 2.');
     let resources: string[] = [];
 
-    // Extract parts from the already sanitizedRawText
     const scriptMatch = sanitizedRawText.match(/\*\*Part 1: Video Script\*\*\s*([\s\S]*?)(?=\*\*Part 2: Video Production Instructions\*\*|$)/);
     if (scriptMatch && scriptMatch[1]) {
-        // Sanitize the extracted part again, just in case the regex captured something complex
-        // However, with the new sanitizeAIResponseText, this second sanitization has less impact.
         script = sanitizeAIResponseText(scriptMatch[1].trim());
     }
 
@@ -353,7 +351,6 @@ Begin Generation:
     console.error('Error calling Gemini API for script generation:', error);
     let message = 'An unknown error occurred during script generation.';
     if (error instanceof Error) message = `Gemini API error for script: ${error.message}`;
-    // Ensure error messages are also sanitized
     return { script: sanitizeAIResponseText(`Script Generation Error: ${message}`), instructions: sanitizeAIResponseText('Instructions generation failed due to API error.'), resources: [] };
   }
 };
@@ -364,7 +361,7 @@ export const expandIdeaIntoRelatedIdeas = async (
   appSoftware: string
 ): Promise<Array<{text: string, keywords: string[]}>> => { 
   if (shouldUseMockData) {
-      console.warn("Gemini (expandIdea): Missing/placeholder API_KEY (process.env.API_KEY). Returning mock data.");
+      console.warn("Gemini (expandIdea): Using mock data due to API key issue.");
       await new Promise(resolve => setTimeout(resolve, 500));
       return [
           {
@@ -381,6 +378,12 @@ export const expandIdeaIntoRelatedIdeas = async (
           }
       ];
   }
+
+  if (!ai) {
+    console.error("Gemini (expandIdeaIntoRelatedIdeas): AI SDK not initialized. Cannot make live API call.");
+    throw new Error("Gemini AI SDK is not initialized. Check API_KEY configuration.");
+  }
+  
   const prompt = `As a YouTube content strategist and keyword specialist, you've just created a video titled "${ideaText}" for the '${niche}' niche${appSoftware ? `, focusing on '${appSoftware}'` : ''}.
 The goal is to generate **5-7 hyper-specific, granular "niche-of-the-niche" follow-up video ideas**. These ideas should drill down into very specific sub-topics, user problems, or unique applications that are distinct enough for their own standalone videos and target long-tail search queries.
 
@@ -406,7 +409,7 @@ KEYWORDS: dynamic pivot tables, Excel sales report, monthly sales tracking, Exce
 
   try {
     const response: GenerateContentResponse = await ai.models.generateContent({
-        model: modelName,
+        model: 'gemini-2.5-flash-preview-04-17',
         contents: prompt,
         config: { temperature: 0.8, topP: 0.95, topK: 50 }
     });
@@ -455,7 +458,7 @@ export const generateKeywordsWithGemini = async (
   appSoftware: string
 ): Promise<{ keywords: string[]; groundingChunks: GroundingChunk[] | undefined }> => {
   if (shouldUseMockData) {
-    console.warn("Gemini (generateKeywords): Missing/placeholder API_KEY (process.env.API_KEY). Returning mock data.");
+    console.warn("Gemini (generateKeywords): Using mock data due to API key issue.");
     await new Promise(resolve => setTimeout(resolve, 600));
     return {
       keywords: [
@@ -470,6 +473,11 @@ export const generateKeywordsWithGemini = async (
         { web: { uri: "https://mock-source-2.com/article", title: "Another Mock Keyword Article" } },
       ]
     };
+  }
+
+  if (!ai) {
+    console.error("Gemini (generateKeywordsWithGemini): AI SDK not initialized. Cannot make live API call.");
+    throw new Error("Gemini AI SDK is not initialized. Check API_KEY configuration.");
   }
 
   const prompt = `You are a YouTube SEO and keyword research expert.
@@ -499,7 +507,7 @@ excel budget template for students
 
   try {
     const response: GenerateContentResponse = await ai.models.generateContent({
-      model: modelName,
+      model: 'gemini-2.5-flash-preview-04-17',
       contents: prompt,
       config: {
         tools: [{ googleSearch: {} }], 
@@ -542,7 +550,7 @@ export const generateTitleSuggestionsWithGemini = async (
   keywords?: string[]
 ): Promise<TitleSuggestion[]> => {
   if (shouldUseMockData) {
-    console.warn("Gemini (generateTitleSuggestions): Missing/placeholder API_KEY (process.env.API_KEY). Returning mock data.");
+    console.warn("Gemini (generateTitleSuggestions): Using mock data due to API key issue.");
     await new Promise(resolve => setTimeout(resolve, 500));
     return [
       {
@@ -554,6 +562,11 @@ export const generateTitleSuggestionsWithGemini = async (
         rationale: sanitizeAIResponseText("More SEO-friendly, includes 'Tutorial', 'Ultimate Guide', and current year.")
       }
     ];
+  }
+
+  if (!ai) {
+    console.error("Gemini (generateTitleSuggestionsWithGemini): AI SDK not initialized. Cannot make live API call.");
+    throw new Error("Gemini AI SDK is not initialized. Check API_KEY configuration.");
   }
 
   const systemInstruction = `You are an expert YouTube video title strategist and SEO copywriter.
@@ -591,7 +604,7 @@ Do NOT include any other text, preamble, or concluding remarks outside of this s
 
   try {
     const response: GenerateContentResponse = await ai.models.generateContent({
-      model: modelName,
+      model: 'gemini-2.5-flash-preview-04-17',
       contents: userPrompt,
       config: {
         systemInstruction: systemInstruction,
@@ -640,13 +653,18 @@ export const analyzeYouTubeCompetitorsForAngles = async (
     competitorVideos: YouTubeVideoResult[] 
 ): Promise<string> => {
     if (shouldUseMockData) {
-        console.warn("Gemini (analyzeYouTubeCompetitorsForAngles): Missing/placeholder API_KEY (process.env.API_KEY). Returning mock data.");
+        console.warn("Gemini (analyzeYouTubeCompetitorsForAngles): Using mock data due to API key issue.");
         await new Promise(resolve => setTimeout(resolve, 400));
         if (competitorVideos.length === 0) return sanitizeAIResponseText("AI STRATEGIC ANGLE:\nOverall Assessment: Mock: No competitor videos found. This topic seems wide open!\nActionable Angles:\n*   Focus on a comprehensive beginner's guide, clearly dated for the current year (e.g., 2024).\n*   Highlight unique benefits or ease of use if applicable to the idea.\n*   Create a visually appealing thumbnail that stands out.");
         const mockComp = competitorVideos[0];
         return sanitizeAIResponseText(`AI STRATEGIC ANGLE:\nOverall Assessment: Mock: Given competitors like "${mockComp.title}" (Views: ${mockComp.viewCountText}, Age: ${mockComp.publishedAtText}, Channel Subs: ${mockComp.channelSubscriberCountText}), there's some existing content.\nActionable Angles:\n*   Consider an up-to-date (e.g., 2024) version for "${ideaText}" if competitor content is older.\n*   Explore a unique practical example or a niche application not covered by others.\n*   If competitors have low subscriber counts but high views on similar topics, it indicates strong demand; focus on higher quality production or clearer explanations.`);
     }
-    if (!GEMINI_API_KEY) return sanitizeAIResponseText('AI STRATEGIC ANGLE:\nOverall Assessment: Gemini API Key (process.env.API_KEY) not configured. Cannot analyze competitors.\nActionable Angles:\n*   Manually review competitor videos for gaps and opportunities.');
+    
+    if (!ai) {
+      console.error("Gemini (analyzeYouTubeCompetitorsForAngles): AI SDK not initialized. Cannot make live API call.");
+      // Return a message indicating SDK is not available, rather than throwing, as this function might be called for UI display.
+      return sanitizeAIResponseText('AI STRATEGIC ANGLE:\nOverall Assessment: Gemini API Key (process.env.API_KEY) not configured or SDK failed to initialize. Cannot analyze competitors.\nActionable Angles:\n*   Manually review competitor videos for gaps and opportunities.');
+    }
 
     const competitorInfo = competitorVideos
       .map(vid => `- Title: "${vid.title}"\n  Views: ${vid.viewCountText}\n  Age: ${vid.publishedAtText}\n  Channel Subscribers: ${vid.channelSubscriberCountText || 'N/A'}\n  Description Snippet: "${vid.descriptionSnippet || 'N/A'}"`)
@@ -690,7 +708,7 @@ Actionable Angles:
 
     try {
         const response = await ai.models.generateContent({
-            model: modelName,
+            model: 'gemini-2.5-flash-preview-04-17',
             contents: prompt,
             config: { temperature: 0.68, topP: 0.92, topK: 45 }
         });
@@ -701,7 +719,6 @@ Actionable Angles:
         if (!text) {
           return sanitizeAIResponseText('AI STRATEGIC ANGLE:\nOverall Assessment: AI analysis did not return a specific insight.\nActionable Angles:\n*   Consider general best practices: up-to-date content, clear explanations, and unique examples.');
         }
-        // Ensure the output starts with the expected prefix, and sanitize the entire AI response
         const prefixedText = text.trim().startsWith("AI STRATEGIC ANGLE:") ? text.trim() : `AI STRATEGIC ANGLE:\n${text.trim()}`;
         return sanitizeAIResponseText(prefixedText);
 
