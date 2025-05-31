@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { IdeaStatus, VideoIdea, CategorizedIdeas, FlashMessage, IdeaPriority, AIStrategicGuidance, GroundingChunk, TitleSuggestion, UntappedScore, YouTubeVideoResult, NEW_HIGH_RPM_CATEGORIES } from './types';
+import { IdeaStatus, VideoIdea, CategorizedIdeas, FlashMessage, IdeaPriority, AIStrategicGuidance, GroundingChunk, TitleSuggestion, UntappedScore, YouTubeVideoResult, USER_DEFINED_NICHES } from './types';
 import { Header } from './components/Header';
 import { IdeaForm } from './components/IdeaForm';
 import { IdeaSection } from './components/IdeaSection';
@@ -136,7 +136,8 @@ const App: React.FC = () => {
     setIsGenerating(true);
     setProactiveRecommendations(null);
     try {
-      const { ideas: generatedIdeasWithRationale, strategicGuidance } = await generateIdeasWithGemini(userQuery, niche, appSoftware, tutorialType, NEW_HIGH_RPM_CATEGORIES);
+      // Removed NEW_HIGH_RPM_CATEGORIES from the call as geminiService will no longer use it directly
+      const { ideas: generatedIdeasWithRationale, strategicGuidance } = await generateIdeasWithGemini(userQuery, niche, appSoftware, tutorialType);
       
       if (strategicGuidance) {
         setProactiveRecommendations(strategicGuidance); 

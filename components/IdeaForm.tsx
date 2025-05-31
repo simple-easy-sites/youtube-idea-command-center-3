@@ -4,7 +4,7 @@ import { Button } from './ui/Button';
 import { Select } from './ui/Select';
 import { NICHES_FOR_DROPDOWN, getNicheDetailsByName, TUTORIAL_TYPE_OPTIONS } from '../constants';
 import { CollapsibleSection } from './ui/CollapsibleSection';
-import { HighRpmNicheDetail } from '../types';
+import { NicheDefinition } from '../types';
 
 interface IdeaFormProps {
   onGenerate: (userQuery: string, niche: string, appSoftware: string, tutorialType: string) => Promise<void>;
@@ -16,7 +16,7 @@ export const IdeaForm: React.FC<IdeaFormProps> = ({ onGenerate, isLoading }) => 
   const [niche, setNiche] = useState<string>(''); 
   const [appSoftware, setAppSoftware] = useState<string>('');
   const [tutorialType, setTutorialType] = useState<string>('');
-  const [selectedNicheDetails, setSelectedNicheDetails] = useState<HighRpmNicheDetail | null>(null);
+  const [selectedNicheDetails, setSelectedNicheDetails] = useState<NicheDefinition | null>(null);
   const [appSoftwareSuggestions, setAppSoftwareSuggestions] = useState<string[]>([]);
 
   useEffect(() => {
@@ -25,12 +25,12 @@ export const IdeaForm: React.FC<IdeaFormProps> = ({ onGenerate, isLoading }) => 
       setSelectedNicheDetails(details || null);
       setAppSoftwareSuggestions(details?.examples || []);
       setAppSoftware(''); // Clear app/software when niche changes
-      setTutorialType(''); // Optionally clear tutorial type as well
+      // setTutorialType(''); // Decided against clearing tutorial type automatically
     } else {
       setSelectedNicheDetails(null);
       setAppSoftwareSuggestions([]);
       setAppSoftware('');
-      setTutorialType('');
+      // setTutorialType('');
     }
   }, [niche]);
 
@@ -64,7 +64,7 @@ export const IdeaForm: React.FC<IdeaFormProps> = ({ onGenerate, isLoading }) => 
           <Select
             label="Primary Focus Niche"
             id="niche"
-            options={[{value: "", label: "Select a Niche (or AI will suggest)"}, ...NICHES_FOR_DROPDOWN.map(n => ({...n, label: `${n.group} - ${n.label}`}))]}
+            options={[{value: "", label: "Select a Niche (or AI will suggest)"}, ...NICHES_FOR_DROPDOWN]} // Directly use flat list
             value={niche}
             onChange={(e) => setNiche(e.target.value)}
             containerClassName="animate-fadeIn" style={{animationDelay: '0.1s'}}
@@ -98,7 +98,7 @@ export const IdeaForm: React.FC<IdeaFormProps> = ({ onGenerate, isLoading }) => 
                 <p>
                     {selectedNicheDetails ? (
                         <>
-                            <strong>Niche Selected: {selectedNicheDetails.name}</strong> ({selectedNicheDetails.category})
+                            <strong>Niche Selected: {selectedNicheDetails.name}</strong>
                             <br />
                             {nicheDescriptionText}
                             {nicheExamplesText && <span className="block mt-1">{nicheExamplesText}</span>}
@@ -118,7 +118,8 @@ export const IdeaForm: React.FC<IdeaFormProps> = ({ onGenerate, isLoading }) => 
                 value={tutorialType}
                 onChange={(e) => setTutorialType(e.target.value)}
                 className="!py-3"
-                disabled={!niche && !appSoftware}
+                // Disabled logic for tutorial type can be independent of niche/appSoftware selection
+                // disabled={!niche && !appSoftware} 
             />
             <div className="animate-fadeIn" style={{animationDelay: '0.4s'}}>
               <Input

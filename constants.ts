@@ -1,4 +1,4 @@
-import { IdeaStatus, IdeaPriority, NEW_HIGH_RPM_CATEGORIES, HighRpmNicheDetail, TutorialType } from './types';
+import { IdeaStatus, IdeaPriority, NicheDefinition, USER_DEFINED_NICHES, TutorialType } from './types';
 
 export const STATUS_OPTIONS = Object.values(IdeaStatus).map(status => ({ value: status, label: status }));
 export const PRIORITY_OPTIONS = [
@@ -7,25 +7,15 @@ export const PRIORITY_OPTIONS = [
   { value: IdeaPriority.HIGH, label: 'High' },
 ];
 
-// Generate NICHES_FOR_DROPDOWN from the new categorized structure
-// Each option will have a value (niche name) and a label (niche name).
-export const NICHES_FOR_DROPDOWN = NEW_HIGH_RPM_CATEGORIES.flatMap(category => 
-  category.niches.map(niche => ({
-    value: niche.name,
-    label: niche.name,
-    group: category.categoryName 
-  }))
-).sort((a, b) => a.label.localeCompare(b.label)); // Sort alphabetically by label
+// Generate NICHES_FOR_DROPDOWN from the new flat USER_DEFINED_NICHES structure
+export const NICHES_FOR_DROPDOWN = USER_DEFINED_NICHES.map(niche => ({
+  value: niche.name, // Use the user-facing name as the value
+  label: niche.name,
+})).sort((a, b) => a.label.localeCompare(b.label)); // Sort alphabetically by label
 
-// Helper function to get niche details (including examples) by its name
-export const getNicheDetailsByName = (nicheName: string): HighRpmNicheDetail | undefined => {
-  for (const category of NEW_HIGH_RPM_CATEGORIES) {
-    const foundNiche = category.niches.find(niche => niche.name === nicheName);
-    if (foundNiche) {
-      return foundNiche;
-    }
-  }
-  return undefined;
+// Helper function to get niche details (including examples) by its name from USER_DEFINED_NICHES
+export const getNicheDetailsByName = (nicheName: string): NicheDefinition | undefined => {
+  return USER_DEFINED_NICHES.find(niche => niche.name === nicheName);
 };
 
 export const TUTORIAL_TYPE_OPTIONS = Object.values(TutorialType).map(type => ({

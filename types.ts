@@ -14,7 +14,6 @@ export enum IdeaStatus {
   PRIORITIZED = 'Prioritized',
   IN_PROGRESS = 'In Progress',
   VIDEO_MADE = 'Video Made',
-  // ARCHIVED = 'Archived', // Removed status
   DISCARDED = 'Discarded',
 }
 
@@ -47,7 +46,7 @@ export interface TitleSuggestion {
 export interface VideoIdea {
   id: string;
   text: string;
-  niche: string;
+  niche: string; // This will store the name from NicheDefinition
   appSoftware: string;
   source: string; 
   priority: IdeaPriority;
@@ -114,17 +113,13 @@ export interface AIStrategicGuidance {
   recommendedVideoTypes?: string[]; 
 }
 
-// --- REVISED HIGH RPM NICHE STRUCTURE ---
-export interface HighRpmNicheDetail {
-  name: string; // e.g., "Artificial Intelligence & Machine Learning"
-  description: string; // General description of the niche
+// --- NEW FLAT NICHE STRUCTURE BASED ON USER'S IMAGE ---
+export interface NicheDefinition {
+  id: string; // A unique identifier, e.g., "accounting_bookkeeping_software_tools"
+  name: string; // The display name, e.g., "Accounting & Bookkeeping Software and Tools"
+  originalNameFromImage: string; // Original name from the user-provided image
+  description: string; // A brief description of the niche
   examples: string[]; // Prominent software, tools, or platforms in this niche
-  category: string; // To which category it belongs
-}
-
-export interface HighRpmNicheCategory {
-  categoryName: string; // e.g., "Technology & Software"
-  niches: HighRpmNicheDetail[];
 }
 
 export enum TutorialType {
@@ -145,197 +140,146 @@ export enum TutorialType {
   CHALLENGES_SOLUTIONS = "Specific Challenges & Solutions"
 }
 
-
-export const NEW_HIGH_RPM_CATEGORIES: HighRpmNicheCategory[] = [
+// Niches based on the user-provided image, transformed as requested.
+export const USER_DEFINED_NICHES: NicheDefinition[] = [
   {
-    categoryName: "Technology & Software Platforms",
-    niches: [
-      { 
-        name: "Artificial Intelligence & Machine Learning", 
-        category: "Technology & Software Platforms", 
-        description: "Covers AI models, libraries, frameworks, platforms, and applications for AI and ML development and usage.", 
-        examples: ["ChatGPT (OpenAI)", "Gemini API (Google)", "Claude AI (Anthropic)", "Midjourney", "DALL-E 3", "Stable Diffusion", "TensorFlow", "PyTorch", "Scikit-learn", "Keras", "Hugging Face Transformers", "LangChain", "Google Vertex AI", "AWS SageMaker", "Azure Machine Learning", "RunwayML", "Llama (Meta)", "Mistral AI Models"] 
-      },
-      { 
-        name: "Cloud Computing & DevOps", 
-        category: "Technology & Software Platforms", 
-        description: "Platforms and tools for cloud infrastructure, services, containerization, orchestration, and development operations.", 
-        examples: ["Amazon Web Services (AWS EC2, S3, Lambda, etc.)", "Microsoft Azure (VMs, Blob Storage, Functions, etc.)", "Google Cloud Platform (GCP Compute Engine, Cloud Storage, etc.)", "Docker", "Kubernetes (K8s)", "Terraform", "Ansible", "Jenkins", "GitLab CI/CD", "GitHub Actions", "DigitalOcean", "Linode", "Vercel", "Netlify", "OpenShift"] 
-      },
-      { 
-        name: "Cybersecurity & Data Protection", 
-        category: "Technology & Software Platforms", 
-        description: "Tools and practices for cybersecurity, network security, data privacy, and threat protection.", 
-        examples: ["CrowdStrike", "Palo Alto Networks Firewalls", "Fortinet FortiGate", "Splunk", "Wireshark", "Nmap", "Metasploit Framework", "Kali Linux", "LastPass (for business)", "1Password (for teams)", "NordVPN/NordLayer", "ProtonVPN", "OpenVPN", "Various EDR/XDR solutions", "SIEM platforms"] 
-      },
-      {
-        name: "Web Development & Hosting",
-        category: "Technology & Software Platforms",
-        description: "Frameworks, libraries, CMS, and platforms for building and hosting websites and web applications.",
-        examples: ["React.js", "Angular", "Vue.js", "Node.js", "Express.js", "Django", "Ruby on Rails", "WordPress", "Drupal", "Joomla", "Shopify (Theme Dev/APIs)", "Wix (Dev Mode)", "Squarespace (Dev Mode)", "Kinsta", "WP Engine", "SiteGround", "Cloudways", "Netlify", "Vercel", "Firebase Hosting"]
-      },
-       {
-        name: "Mobile App Development",
-        category: "Technology & Software Platforms",
-        description: "Frameworks, tools, and platforms for creating native and cross-platform mobile applications.",
-        examples: ["Swift (iOS)", "Kotlin (Android)", "Java (Android)", "React Native", "Flutter", "Xamarin", "Ionic", "NativeScript", "Xcode", "Android Studio", "Firebase (for mobile)", "AWS Amplify"]
-      },
-      {
-        name: "Game Development Engines & Tools",
-        category: "Technology & Software Platforms",
-        description: "Software for creating 2D and 3D video games for various platforms.",
-        examples: ["Unity", "Unreal Engine", "Godot Engine", "CryEngine", "Blender (for 3D modeling)", "Maya", "3ds Max", "Aseprite (pixel art)"]
-      },
-    ]
+    id: "accounting_bookkeeping_software_tools",
+    name: "Accounting & Bookkeeping Software and Tools",
+    originalNameFromImage: "Accounting & Bookkeeping Software Tutorials",
+    description: "Software and tools for managing financial records, invoicing, payroll, and tax preparation for businesses and individuals.",
+    examples: ["QuickBooks Online", "QuickBooks Desktop", "Xero", "FreshBooks", "Wave Accounting", "Zoho Books", "Sage Intacct", "NetSuite (Finance Modules)", "MYOB", "Oracle Financials Cloud", "SAP S/4HANA Finance", "FreeAgent", "KashFlow", "GnuCash", "Manager.io"]
   },
   {
-    categoryName: "Business Operations & Productivity Software",
-    niches: [
-      { 
-        name: "Accounting & Bookkeeping Software", 
-        category: "Business Operations & Productivity Software", 
-        description: "Tools for managing business and personal finances, invoicing, payroll, and tax preparation.", 
-        examples: ["QuickBooks Online", "QuickBooks Desktop", "Xero", "FreshBooks", "Zoho Books", "Sage Accounting (Intacct)", "Wave Accounting", "MYOB", "NetSuite ERP (Finance modules)", "SAP S/4HANA (Finance modules)"] 
-      },
-      { 
-        name: "CRM (Customer Relationship Management) Platforms", 
-        category: "Business Operations & Productivity Software", 
-        description: "Software for managing customer interactions, sales pipelines, marketing automation, and service.", 
-        examples: ["Salesforce Sales Cloud", "HubSpot CRM", "Zoho CRM", "Pipedrive", "Monday.com Sales CRM", "ActiveCampaign (CRM features)", "Microsoft Dynamics 365 Sales", "SAP Sales Cloud", "Oracle Siebel CRM", "NetSuite CRM"] 
-      },
-      { 
-        name: "ERP (Enterprise Resource Planning) Systems", 
-        category: "Business Operations & Productivity Software", 
-        description: "Integrated management of main business processes, often in real time, mediated by software and technology.", 
-        examples: ["SAP S/4HANA", "Oracle NetSuite", "Microsoft Dynamics 365 (Finance & Operations, Business Central)", "Oracle ERP Cloud", "Infor ERP", "Epicor ERP", "Odoo"] 
-      },
-      { 
-        name: "Payment Processing & POS Systems", 
-        category: "Business Operations & Productivity Software", 
-        description: "Platforms and tools for accepting payments, managing point-of-sale transactions, and online payment gateways.", 
-        examples: ["Stripe", "Square (POS/Payments)", "PayPal for Business", "Shopify Payments", "Adyen", "Clover POS", "Toast POS", "Lightspeed POS", "Authorize.net", "Braintree"] 
-      },
-      { 
-        name: "E-commerce Platforms & Tools", 
-        category: "Business Operations & Productivity Software", 
-        description: "Software for building, managing, and scaling online stores and e-commerce operations.", 
-        examples: ["Shopify", "WooCommerce (WordPress)", "BigCommerce", "Magento (Adobe Commerce)", "Squarespace Commerce", "Wix eCommerce", "Etsy Seller Platform", "Amazon Seller Central (FBA/FBM)", "PrestaShop", "OpenCart"] 
-      },
-      { 
-        name: "Email Marketing & Automation Platforms", 
-        category: "Business Operations & Productivity Software", 
-        description: "Tools for creating email campaigns, managing subscriber lists, and automating marketing/sales workflows.", 
-        examples: ["Mailchimp", "ConvertKit", "ActiveCampaign", "Klaviyo", "Brevo (formerly Sendinblue)", "MailerLite", "Constant Contact", "HubSpot Marketing Hub", "Beehiiv", "Substack (for newsletters)", "Moosend", "GetResponse"] 
-      },
-      { 
-        name: "Digital Advertising Platforms", 
-        category: "Business Operations & Productivity Software", 
-        description: "Platforms for managing and optimizing paid advertising campaigns across various online channels.", 
-        examples: ["Google Ads (Search, Display, YouTube)", "Meta Ads Manager (Facebook & Instagram)", "TikTok Ads Manager", "LinkedIn Ads", "X Ads (Twitter Ads)", "Pinterest Ads", "Amazon Advertising", "Microsoft Advertising (Bing Ads)", "Programmatic Ad Platforms (e.g., Google DV360, The Trade Desk)"] 
-      },
-      { 
-        name: "SEO & Content Marketing Tools", 
-        category: "Business Operations & Productivity Software", 
-        description: "Software for keyword research, site audits, rank tracking, content optimization, and link building.", 
-        examples: ["Ahrefs", "Semrush", "Moz Pro", "Google Search Console", "Google Analytics 4", "Screaming Frog SEO Spider", "Surfer SEO", "Clearscope", "Yoast SEO (WordPress)", "Rank Math (WordPress)", "AnswerThePublic", "AlsoAsked"] 
-      },
-      { 
-        name: "Project Management & Productivity Suites", 
-        category: "Business Operations & Productivity Software", 
-        description: "Tools for team collaboration, task management, project planning, and overall business productivity.", 
-        examples: ["Asana", "Monday.com", "ClickUp", "Notion (for teams)", "Trello", "Jira (for software development)", "Microsoft Project", "Microsoft Teams", "Slack", "Google Workspace (Docs, Sheets, Slides, Meet)", "Microsoft 365 (Word, Excel, PowerPoint, Teams)", "Smartsheet", "Wrike", "Basecamp"] 
-      },
-      { 
-        name: "Business Intelligence & Data Analytics Tools", 
-        category: "Business Operations & Productivity Software", 
-        description: "Software for data visualization, reporting, and gaining insights from business data.", 
-        examples: ["Microsoft Power BI", "Tableau", "Google Looker Studio (formerly Data Studio)", "Qlik Sense", "Sisense", "Mode Analytics", "ThoughtSpot", "Zoho Analytics", "Google Analytics 4"]
-      }
-    ]
+    id: "ai_machine_learning_software_tools",
+    name: "Artificial Intelligence & Machine Learning Software and Tools",
+    originalNameFromImage: "AI Tools for Business & Workflow Automation", // User specified this rename
+    description: "Platforms, libraries, frameworks, and applications for developing, deploying, and utilizing AI and machine learning models.",
+    examples: ["ChatGPT (OpenAI)", "Gemini API (Google)", "Claude AI (Anthropic)", "DALL-E 3 / ChatGPT Vision", "Midjourney", "Stable Diffusion", "Hugging Face Transformers", "TensorFlow", "PyTorch", "Scikit-learn", "Keras", "LangChain", "LlamaIndex", "Google Vertex AI Platform", "AWS SageMaker", "Azure Machine Learning", "RunwayML", "Colab / Jupyter Notebooks", "RapidMiner", "DataRobot", "H2O.ai", "KNIME"]
   },
   {
-    categoryName: "Personal Finance & Investment Platforms",
-    niches: [
-      { 
-        name: "Online & Mobile Banking Applications", 
-        category: "Personal Finance & Investment Platforms", 
-        description: "Consumer and business banking applications for managing accounts, payments, and transfers.", 
-        examples: ["Zelle", "Venmo", "PayPal (Personal)", "Cash App", "Chime", "Monzo", "Revolut", "Wise (formerly TransferWise)", "N26", "Ally Bank App", "Capital One Mobile App", "Bank of America Mobile App", "Chase Mobile App", "Wells Fargo Mobile App"] 
-      },
-      { 
-        name: "Investing & Brokerage Platforms", 
-        category: "Personal Finance & Investment Platforms", 
-        description: "Platforms for trading stocks, ETFs, options, mutual funds, and managing retirement accounts.", 
-        examples: ["Robinhood", "Fidelity", "Charles Schwab", "Vanguard", "TD Ameritrade (Thinkorswim)", "E*TRADE", "Interactive Brokers", "Webull", "M1 Finance", "Public.com", "Betterment", "Wealthfront"] 
-      },
-      { 
-        name: "Cryptocurrency Exchanges & Wallets", 
-        category: "Personal Finance & Investment Platforms", 
-        description: "Platforms for buying, selling, trading, and storing cryptocurrencies and digital assets.", 
-        examples: ["Coinbase", "Binance", "Kraken", "Gemini Exchange", "Crypto.com", "MetaMask", "Ledger Nano (Hardware Wallet)", "Trezor (Hardware Wallet)", "Exodus Wallet", "Trust Wallet", "Uniswap (DEX)", "PancakeSwap (DEX)", "OpenSea (NFT Marketplace)", "Blur (NFT Marketplace)"] 
-      },
-      { 
-        name: "Personal Finance & Budgeting Software", 
-        category: "Personal Finance & Investment Platforms", 
-        description: "Tools for budgeting, expense tracking, financial planning, tax preparation, and credit management.", 
-        examples: ["YNAB (You Need A Budget)", "Mint (Intuit)", "Quicken", "Personal Capital (Empower)", "TurboTax", "H&R Block Software", "Credit Karma", "Rocket Money (formerly Truebill)", "Simplifi by Quicken", "PocketGuard", "Goodbudget"] 
-      },
-      {
-        name: "Real Estate & Mortgage Platforms",
-        category: "Personal Finance & Investment Platforms",
-        description: "Online platforms for property search, real estate investment, mortgage applications, and management.",
-        examples: ["Zillow", "Redfin", "Realtor.com", "Rocket Mortgage", "Better.com", "Fundrise", "Roofstock", "Trulia", "Apartments.com"]
-      }
-    ]
+    id: "business_productivity_project_management_software_tools",
+    name: "Business Productivity & Project Management Software and Tools",
+    originalNameFromImage: "Business Productivity & Project Management Software Tutorials",
+    description: "Applications and suites for task management, team collaboration, project planning, and enhancing overall business efficiency.",
+    examples: ["Asana", "Monday.com", "ClickUp", "Trello", "Jira (Atlassian)", "Notion", "Slack", "Microsoft Teams", "Google Workspace (Docs, Sheets, Slides, Meet)", "Microsoft 365 (Word, Excel, PowerPoint, Planner)", "Smartsheet", "Wrike", "Basecamp", "Airtable", "Todoist", "Evernote", "Confluence (Atlassian)"]
   },
   {
-    categoryName: "Creative & Design Software",
-    niches: [
-      {
-        name: "Graphic Design & Photo Editing Software",
-        category: "Creative & Design Software",
-        description: "Tools for creating and manipulating digital images, illustrations, and layouts.",
-        examples: ["Adobe Photoshop", "Adobe Illustrator", "Adobe InDesign", "Canva", "Figma (for design)", "Affinity Photo", "Affinity Designer", "Procreate (iPad)", "GIMP", "Krita", "CorelDRAW", "Inkscape"]
-      },
-      {
-        name: "Video Editing & Motion Graphics Software",
-        category: "Creative & Design Software",
-        description: "Software for editing video footage, creating visual effects, and motion graphics.",
-        examples: ["Adobe Premiere Pro", "Adobe After Effects", "Final Cut Pro X", "DaVinci Resolve", "CapCut", "Filmora", "iMovie", "HitFilm Express", "Blender (Video Editing Sequence Editor)", "VEGAS Pro", "Avid Media Composer"]
-      },
-      {
-        name: "3D Modeling & Animation Software",
-        category: "Creative & Design Software",
-        description: "Tools for creating 3D models, sculptures, animations, and visual effects.",
-        examples: ["Blender", "Autodesk Maya", "Autodesk 3ds Max", "Cinema 4D", "ZBrush", "Substance Painter", "Substance Designer", "Houdini", "Modo", "SketchUp"]
-      },
-      {
-        name: "UI/UX Design & Prototyping Tools",
-        category: "Creative & Design Software",
-        description: "Software for designing user interfaces, user experiences, and interactive prototypes.",
-        examples: ["Figma", "Adobe XD", "Sketch", "InVision", "Axure RP", "Marvel App", "Proto.io", "Balsamiq", "Framer"]
-      },
-      {
-        name: "Audio Production & Music Software (DAWs)",
-        category: "Creative & Design Software",
-        description: "Digital Audio Workstations and tools for recording, editing, mixing, and mastering audio and music.",
-        examples: ["Ableton Live", "Logic Pro X", "Pro Tools", "FL Studio", "Cubase", "Reaper", "Studio One", "GarageBand", "Audacity", "Bitwig Studio"]
-      }
-    ]
+    id: "cloud_computing_infrastructure_management_software_tools",
+    name: "Cloud Computing & Infrastructure Management Software and Tools",
+    originalNameFromImage: "Cloud Computing & Infrastructure Management",
+    description: "Platforms, services, and tools for managing cloud-based resources, infrastructure as code, containerization, and CI/CD pipelines.",
+    examples: ["Amazon Web Services (AWS - EC2, S3, Lambda, RDS, etc.)", "Microsoft Azure (VMs, Blob Storage, Functions, Azure DevOps, etc.)", "Google Cloud Platform (GCP - Compute Engine, Cloud Storage, Kubernetes Engine, etc.)", "Docker", "Kubernetes (K8s)", "Terraform", "Ansible", "Jenkins", "GitLab CI/CD", "GitHub Actions", "OpenShift", "VMware vSphere", "DigitalOcean", "Linode", "Vercel", "Netlify", "Heroku", "Cloudflare"]
+  },
+  {
+    id: "crm_software_tools",
+    name: "CRM (Customer Relationship Management) Software and Tools",
+    originalNameFromImage: "CRM (Customer Relationship Management) Software Tutorials",
+    description: "Software solutions for managing customer interactions, sales pipelines, marketing campaigns, and customer service.",
+    examples: ["Salesforce Sales Cloud", "HubSpot CRM", "Zoho CRM", "Pipedrive", "ActiveCampaign (CRM)", "Microsoft Dynamics 365 Sales", "Monday.com Sales CRM", "Oracle Siebel CRM", "SAP Sales Cloud", "NetSuite CRM", "Zendesk Sell", "Insightly", "Copper (formerly ProsperWorks)", "Agile CRM", "Capsule CRM"]
+  },
+  {
+    id: "crypto_trading_defi_web3_software_tools",
+    name: "Crypto Trading, DeFi, & Web3 Software and Tools",
+    originalNameFromImage: "Crypto Trading, DeFi, & Web3 Tool Tutorials",
+    description: "Platforms, wallets, and tools for trading cryptocurrencies, interacting with decentralized finance protocols, and engaging with Web3 applications.",
+    examples: ["Binance", "Coinbase", "Kraken", "MetaMask", "Ledger Nano (Hardware Wallet)", "Trezor (Hardware Wallet)", "Trust Wallet", "Exodus Wallet", "Uniswap (DEX)", "PancakeSwap (DEX)", "Aave", "Compound", "Curve Finance", "OpenSea (NFT Marketplace)", "Blur (NFT Marketplace)", "Phantom Wallet (Solana)", "TradingView (for crypto charts)", "CoinMarketCap", "CoinGecko", "Etherscan", "PolygonScan"]
+  },
+  {
+    id: "cybersecurity_data_protection_software_tools",
+    name: "Cybersecurity & Data Protection Software and Tools",
+    originalNameFromImage: "Cybersecurity & Data Protection for Business",
+    description: "Software and practices for network security, endpoint protection, data privacy, threat detection, and incident response.",
+    examples: ["CrowdStrike Falcon", "Palo Alto Networks Next-Generation Firewalls", "Fortinet FortiGate", "Splunk (for SIEM)", "Wireshark", "Nmap", "Metasploit Framework", "Kali Linux", "Burp Suite", "LastPass (for Business)", "1Password (for Teams)", "NordVPN/NordLayer", "ProtonVPN", "OpenVPN", "Various EDR/XDR Solutions (e.g., SentinelOne, Microsoft Defender for Endpoint)", "SIEM Platforms (e.g., IBM QRadar, LogRhythm)", "Bitdefender GravityZone", "Malwarebytes for Business", "HashiCorp Vault"]
+  },
+  {
+    id: "ecommerce_platform_business_automation_software_tools",
+    name: "E-commerce Platform & Business Automation Software and Tools",
+    originalNameFromImage: "E-commerce Platform & Business Automation Tutorials",
+    description: "Platforms for building online stores, managing inventory and sales, and tools for automating e-commerce workflows.",
+    examples: ["Shopify", "WooCommerce (WordPress)", "BigCommerce", "Magento (Adobe Commerce)", "Squarespace Commerce", "Wix eCommerce", "Etsy Seller Tools", "Amazon Seller Central (FBA/FBM)", "Zapier (for automation)", "Make (formerly Integromat, for automation)", "Shopify Flow", "ShipStation", "Printful / Printify (Print-on-Demand integration)", "Jungle Scout / Helium 10 (Amazon Seller Tools)"]
+  },
+  {
+    id: "email_marketing_sales_automation_software_tools",
+    name: "Email Marketing & Sales Automation Software and Tools",
+    originalNameFromImage: "Email Marketing & Sales Automation Software Tutorials",
+    description: "Tools for creating email campaigns, managing subscriber lists, automating marketing communications, and streamlining sales processes.",
+    examples: ["Mailchimp", "ConvertKit", "ActiveCampaign", "HubSpot Marketing Hub", "Klaviyo", "Brevo (formerly Sendinblue)", "MailerLite", "Constant Contact", "GetResponse", "Moosend", "Salesforce Marketing Cloud / Pardot", "Marketo (Adobe)", "Lemlist", "Woodpecker.co", "Apollo.io"]
+  },
+  {
+    id: "erp_software_tools",
+    name: "ERP (Enterprise Resource Planning) Software and Tools",
+    originalNameFromImage: "ERP (Enterprise Resource Planning) Software Tutorials",
+    description: "Integrated systems for managing core business processes including finance, HR, supply chain, manufacturing, and services.",
+    examples: ["SAP S/4HANA", "Oracle NetSuite", "Microsoft Dynamics 365 (Finance & Operations, Business Central)", "Oracle ERP Cloud", "Infor ERP", "Epicor ERP", "Odoo", "Sage Intacct (as an ERP component)", "IFS Applications", "Deltek", "Workday (HR/Finance focus)"]
+  },
+  {
+    id: "general_business_saas_b2b_software_tools",
+    name: "General Business SaaS & B2B Software and Tools",
+    originalNameFromImage: "General Business SaaS (Software as a Service) & B2B Tools",
+    description: "A broad category of cloud-based software catering to various business needs and B2B interactions.",
+    examples: ["Slack", "Zoom", "Microsoft Teams", "Google Workspace", "DocuSign", "Dropbox Business", "Box", "SurveyMonkey", "Typeform", "Calendly", "Intercom", "Zendesk (Customer Service)", "Salesforce (various clouds)", "HubSpot (various hubs)", "Hootsuite / Sprout Social (Social Media Management)", "Canva for Teams", "Figma / Miro (Collaboration)"]
+  },
+  {
+    id: "personal_finance_software_strategies_tools",
+    name: "Personal Finance Software, Strategies, and Tools",
+    originalNameFromImage: "High-Value Personal Finance Software & Strategies",
+    description: "Applications and platforms for budgeting, expense tracking, investment management, tax preparation, and financial planning for individuals.",
+    examples: ["YNAB (You Need A Budget)", "Mint (by Intuit)", "Personal Capital (Empower)", "Quicken", "TurboTax", "H&R Block Software", "Credit Karma", "Rocket Money (formerly Truebill)", "Simplifi by Quicken", "PocketGuard", "Wealthfront", "Betterment", "Acorns", "Stash", "EveryDollar (Ramsey Solutions)"]
+  },
+  {
+    id: "legal_tech_business_compliance_software_tools",
+    name: "Legal Tech & Business Compliance Software and Tools",
+    originalNameFromImage: "Legal Tech & Business Compliance Software",
+    description: "Technology and software for legal practice management, legal research, e-discovery, contract management, and regulatory compliance.",
+    examples: ["Clio", "LexisNexis", "Westlaw", "DocuSign (for legal agreements)", "ContractSafe / Ironclad (Contract Lifecycle Management)", "OneTrust (Privacy & Compliance)", "Relativity (eDiscovery)", "Everlaw (eDiscovery)", "MyCase", "PracticePanther", "CaseFox", "Logikcull"]
+  },
+  {
+    id: "online_mobile_banking_apps_tools",
+    name: "Online & Mobile Banking Apps and Tools",
+    originalNameFromImage: "Online & Mobile Banking App Tutorials",
+    description: "Digital platforms and applications provided by financial institutions for managing bank accounts, making payments, and other banking services.",
+    examples: ["Chase Mobile App", "Bank of America Mobile App", "Wells Fargo Mobile App", "Capital One Mobile App", "Ally Bank App", "Chime", "Revolut", "Monzo", "N26", "Wise (formerly TransferWise)", "Zelle", "Venmo (P2P Payments)", "PayPal Mobile App (P2P & Business)", "Cash App (P2P & Investing)", "Current"]
+  },
+  {
+    id: "paid_social_media_advertising_analytics_software_tools",
+    name: "Paid Social Media Advertising & Analytics Software and Tools",
+    originalNameFromImage: "Paid Social Media Advertising & Analytics Tutorials",
+    description: "Platforms for creating, managing, and analyzing paid advertising campaigns on social media networks, along with associated analytics tools.",
+    examples: ["Meta Ads Manager (Facebook & Instagram Ads)", "Google Ads (for YouTube Ads)", "LinkedIn Ads", "TikTok Ads Manager", "X Ads (Twitter Ads)", "Pinterest Ads Manager", "Snapchat Ads Manager", "Google Analytics 4 (for tracking campaign performance)", "Sprout Social (Ads Management features)", "Hootsuite Ads", "AdEspresso", "Buffer (Ads features)", "Supermetrics / Funnel.io (Data Aggregation)"]
+  },
+  {
+    id: "payment_processing_business_pos_systems_tools",
+    name: "Payment Processing & Business POS Systems and Tools",
+    originalNameFromImage: "Payment Processing & Business POS System Tutorials",
+    description: "Systems and gateways for accepting various forms of payment, managing sales transactions, and point-of-sale operations.",
+    examples: ["Stripe", "PayPal (Business / Zettle)", "Square (POS & Payments)", "Shopify Payments / Shopify POS", "Clover POS", "Toast POS (Restaurant focus)", "Lightspeed POS", "Adyen", "Braintree (A PayPal Service)", "Authorize.net", "2Checkout (Verifone)", "Worldpay from FIS", "NCR Aloha POS"]
+  },
+  {
+    id: "personal_investing_brokerage_platforms_tools",
+    name: "Personal Investing & Brokerage Platforms and Tools",
+    originalNameFromImage: "Personal Investing & Brokerage Platform Tutorials",
+    description: "Online platforms that enable individuals to buy, sell, and manage investments such as stocks, bonds, ETFs, and mutual funds.",
+    examples: ["Robinhood", "Fidelity", "Charles Schwab", "Vanguard", "TD Ameritrade (Thinkorswim)", "E*TRADE (from Morgan Stanley)", "Interactive Brokers (IBKR Lite/Pro)", "Webull", "M1 Finance", "Public.com", "SoFi Invest", "Betterment (Robo-advisor & Investing)", "Wealthfront (Robo-advisor & Investing)", "StockCharts.com", "TradingView (Charting & Social)"]
+  },
+  {
+    id: "seo_advanced_content_marketing_software_tools",
+    name: "SEO & Advanced Content Marketing Software and Tools",
+    originalNameFromImage: "SEO & Advanced Content Marketing Tools Tutorials",
+    description: "Software for keyword research, site audits, rank tracking, content optimization, link building, and overall content strategy enhancement.",
+    examples: ["Ahrefs", "Semrush", "Moz Pro", "Google Search Console", "Google Analytics 4", "Screaming Frog SEO Spider", "Surfer SEO", "Clearscope", "MarketMuse", "Frase.io", "Yoast SEO (WordPress)", "Rank Math (WordPress)", "AnswerThePublic", "AlsoAsked", "BuzzSumo", "Grammarly (Content Quality)", "Jasper / Copy.ai / Writesonic (AI Writing Assistants)", "Ubersuggest"]
+  },
+  {
+    id: "small_business_funding_capital_acquisition_platforms_tools",
+    name: "Small Business Funding & Capital Acquisition Platforms and Tools",
+    originalNameFromImage: "Small Business Funding & Capital Acquisition",
+    description: "Platforms and services that help small businesses secure funding through loans, lines of credit, grants, or equity investment.",
+    examples: ["Lendio (Loan Marketplace)", "Fundbox (Line of Credit/Invoice Financing)", "BlueVine (Line of Credit/Checking)", "OnDeck (Term Loans/Line of Credit)", "Kabbage (Now Amex Business Blueprint Line of Credit)", "SBA Loans (via various lenders)", "Kickstarter (Crowdfunding)", "Indiegogo (Crowdfunding)", "GoFundMe (for certain business causes)", "AngelList (Startup Funding)", "SeedInvest (Equity Crowdfunding)", "Nav (Business Credit & Financing Options)"]
+  },
+  {
+    id: "web_hosting_enterprise_web_development_software_tools",
+    name: "Web Hosting & Enterprise Web Development Software and Tools",
+    originalNameFromImage: "Web Hosting & Enterprise Web Development Tutorials",
+    description: "Services for hosting websites and applications, alongside tools and frameworks used for large-scale web development projects.",
+    examples: ["Bluehost", "SiteGround", "Hostinger", "WP Engine (Managed WordPress)", "Kinsta (Managed WordPress)", "Cloudways (Managed Cloud Hosting)", "AWS Amplify / Lightsail / EC2+S3", "Google Cloud Hosting / Firebase Hosting", "Azure App Service", "Vercel (Frontend Cloud)", "Netlify (Frontend Cloud)", "DigitalOcean (Droplets/App Platform)", "WordPress.org (Self-hosted)", "Drupal", "Joomla", "Contentful (Headless CMS)", "Sanity.io (Headless CMS)", "Strapi (Headless CMS)", "Pantheon (WebOps)"]
   }
 ];
-
-// --- OLD HIGH RPM NICHE STRUCTURE (TO BE REMOVED/REPLACED) ---
-// This structure is now superseded by NEW_HIGH_RPM_CATEGORIES
-export interface HighRpmNicheInfo {
-  name: string; 
-  examples?: string; 
-  label: string; 
-}
-
-// This constant is being replaced. Keeping it temporarily to avoid breaking imports immediately,
-// but it should be removed once constants.ts is updated.
-export const HIGH_RPM_NICHES: HighRpmNicheInfo[] = [
-  { name: 'Placeholder Niche', label: 'This is a placeholder, update constants.ts' }
-];
-// --- END OF OLD STRUCTURE ---
