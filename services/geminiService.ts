@@ -1,4 +1,5 @@
 
+
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
 import { GroundingChunk, TitleSuggestion, AIStrategicGuidance, YouTubeVideoResult, NicheDefinition, USER_DEFINED_NICHES, TutorialType } from '../types';
 
@@ -275,32 +276,38 @@ export const generateVideoScriptAndInstructions = async (
   appSoftware: string,
   targetLengthMinutes: number,
   existingKeywords?: string[],
-  competitorInsights?: string // This would be derived from aiCompetitiveAngle
+  competitorInsights?: string // This is the AI Strategic Angle
 ): Promise<{ script: string; videoInstructions: string; suggestedResources: string[] }> => {
   if (shouldUseMockData) {
     console.warn("Gemini (generateVideoScriptAndInstructions): Using mock data due to API key issue.");
     await new Promise(resolve => setTimeout(resolve, 800));
+    const mockCompetitorInsight = competitorInsights || "Mock: No specific competitor insights provided, focus on generic good practices.";
     const mockScript = `
 **Part 1: Video Script**
-
+// --- Section: Introduction ---
 **(Intro - 15 seconds)**
 In today's video, I'm going to teach you how to ${ideaTitle.toLowerCase()} using ${appSoftware || 'the best tools'} for the ${niche} niche! This is super useful for [mention a common benefit]. Let's dive in!
+Competitor Insight used: ${mockCompetitorInsight.substring(0, 50)}...
 
+// --- Section: Setup ---
 **(Main Content - Step 1)**
 First, you'll need to [mock step 1 action, e.g., open ${appSoftware || 'the application'}]. Make sure you [mention a key detail for step 1].
 
+// --- Section: Core Task ---
 **(Main Content - Step 2)**
 Next, [mock step 2 action, e.g., navigate to the 'Settings' menu]. You'll see an option for [mention a UI element].
 
 **(Main Content - Mid-roll engage - if targetLengthMinutes > 3)**
 Quick pause! If you're finding this tutorial helpful, hit that like button and subscribe for more content like this. It really helps the channel!
 
+// --- Section: Advanced Tip ---
 **(Main Content - Step 3)**
 Then, [mock step 3 action, e.g., adjust the 'Quality' settings to High]. This ensures your output looks great.
 
 **(Tips - if applicable)**
 A quick tip: always save your work frequently!
 
+// --- Section: Conclusion ---
 **(Conclusion - 20 seconds)**
 And there you have it! That's how you can easily ${ideaTitle.toLowerCase()}. If you have questions, drop them in the comments. Thanks for watching, and I'll see you next time!
 
@@ -311,6 +318,7 @@ And there you have it! That's how you can easily ${ideaTitle.toLowerCase()}. If 
 - Use on-screen text annotations for key commands or shortcuts.
 - Maintain an enthusiastic but clear vocal pace.
 - Edit out long pauses or mistakes.
+- Ensure each section of the script flows logically with visual cues.
 
 **Part 3: Suggested Script Resources**
 
@@ -330,16 +338,8 @@ And there you have it! That's how you can easily ${ideaTitle.toLowerCase()}. If 
     throw new Error("Gemini AI SDK is not initialized. Check API_KEY configuration.");
   }
 
-  const exampleScript1 = `
-Example Script Style 1 (Discord/Jockey Music):
-In today's video I'm going to teach you how to play YouTube music in Discord... [rest of user's Discord script example] ...happy listening and I'll see you in the next one.
-  `;
-  const exampleScript2 = `
-Example Script Style 2 (MS Word Product Key):
-In today's video I'm going to teach you how to find your Microsoft Word product key... [rest of user's Word script example] ...for more useful guides and tips.
-  `;
-
-  const systemInstruction = `You are an expert YouTube scriptwriter specializing in creating clear, concise, and actionable 'quick and dirty' OBS Studio style tutorial scripts. Your scripts must be engaging and directly address the user's need as outlined in the video title. Maintain a direct, instructional, and slightly enthusiastic tone. Avoid fluff, overly conversational intros/outros, or unnecessary empathetic statements. Get straight to the point. Assume the audience wants to learn quickly and efficiently.`;
+  const systemInstruction = `You are an expert YouTube scriptwriter specializing in creating clear, concise, and actionable 'quick and dirty' OBS Studio style tutorial scripts. Your scripts must be engaging and directly address the user's need as outlined in the video title. Maintain a direct, instructional, and slightly enthusiastic tone. Avoid fluff, overly conversational intros/outros, or unnecessary empathetic statements. Get straight to the point. Assume the audience wants to learn quickly and efficiently. 
+  CRITICAL: The script MUST be structured into logical sections or "chapters" to make it easy to follow and potentially break down into smaller videos. Use comments like "// --- Section: [Brief Description of Section Content] ---" to demarcate these logical sections. These comments are for script structure and will NOT be spoken. Ensure the content within these sections flows naturally.`;
 
   let prompt = `
 Video Title/Idea: "${ideaTitle}"
@@ -347,44 +347,54 @@ Niche: "${niche}"
 App/Software Focus: ${appSoftware ? `"${appSoftware}"` : "Not specified, focus on general niche topic"}
 Target Video Length: Approximately ${targetLengthMinutes} minutes.
 ${existingKeywords && existingKeywords.length > 0 ? `Relevant Keywords to Incorporate: ${existingKeywords.join(', ')}\n` : ''}
-${competitorInsights ? `Strategic Angle/Competitor Insights: ${competitorInsights}\n` : "No specific competitor data provided; focus on creating a strong foundational script based on the title and niche.\n"}
+${competitorInsights ? `CRITICAL Competitor Insights & Strategic Angle (MUST HEAVILY INFLUENCE SCRIPT TO BE UNIQUE AND SUPERIOR): ${competitorInsights}\n` : "No specific competitor data provided; focus on creating a strong foundational script based on the title and niche, ensuring clarity and value.\n"}
 
-**Mandatory Script Structure & Content (Emulate user-provided examples):**
+**Mandatory Script Structure & Content:**
 1.  **Hook & Introduction (First 15-30 seconds of script time):**
     *   Start IMMEDIATELY: "In today's video, I'm going to teach/show you how to [Core Task from Video Title]."
-    *   Briefly (1-2 sentences) explain the value/benefit: "This is useful because..." or "This will help you..." (e.g., "...enhance your Discord experience...", "...a fantastic way to elevate your server's atmosphere...").
-2.  **Main Content (Step-by-Step Instructions):**
+    *   Briefly (1-2 sentences) explain the value/benefit, potentially hinting at the unique angle derived from Competitor Insights.
+2.  **Main Content (Step-by-Step Instructions, logically sectioned):**
     *   Break down the process into clear, logically sequenced steps.
-    *   For each step: Clearly state the action (e.g., "First, navigate to...", "Next, click on...", "Now, type...").
-    *   Provide brief context or explanation for *why* this step is necessary if not obvious.
-    *   Include illustrative examples where appropriate.
-    *   **Mid-Roll Engagement Prompt (If script is for >3 minutes):** After a few key steps, insert a brief prompt like: "If you're finding this helpful, consider subscribing for more tutorials like this!" or "Quick pause: let me know in the comments if you've tried this before!"
-3.  **Tips/Troubleshooting (Optional but Recommended):** Briefly mention 1-2 common pitfalls or useful tips related to the process, as seen in the "MS Word" example ("Here are a few additional tips...").
-4.  **Conclusion & Call to Action (Last 15-30 seconds of script time):**
-    *   Quick recap: "And there you have it! That's how you [Core Task]." or "That wraps up our guide..."
-    *   Encourage engagement: "If you have any questions, drop them in the comments below."
-    *   Suggest next steps or related content (optional): "Check out my other video on [Related Topic] if you're interested."
-    *   Sign off: "Thanks for watching, and I'll see you in the next one!" or "Happy listening!"
+    *   Organize these steps into distinct sections using "// --- Section: [Brief Description] ---" comments.
+    *   For each step: Clearly state the action. Provide brief context or explanation if not obvious.
+    *   **Crucially, ensure the content directly addresses any gaps or opportunities identified in the Competitor Insights.** For example, if competitors are too complex, make your explanation simpler. If they miss a key use case, include it.
+    *   **Mid-Roll Engagement Prompt (If script is for >3 minutes):** After a few key sections, insert a brief prompt.
+3.  **Tips/Troubleshooting (Optional but Recommended, can be a section):** Briefly mention 1-2 common pitfalls or useful tips, especially if Competitor Insights suggest this is a weak area for existing videos.
+4.  **Conclusion & Call to Action (Last 15-30 seconds of script time, can be a section):**
+    *   Quick recap.
+    *   Encourage engagement.
+    *   Sign off.
 
 **Output Requirements (Strictly Follow):**
 *   Pace the script to fit the **Target Video Length**.
 *   Write as if spoken directly to the camera for an OBS Studio style screen recording.
-*   Use Google Search to inform content, especially if needing specific examples or details related to the app/software or niche.
+*   Use Google Search to inform content, especially for specific examples or details related to the app/software or niche, and to validate the strategic angle from competitor insights.
 *   Output three distinct parts, CLEARLY LABELED as follows:
     \`\`\`
     **Part 1: Video Script**
-    [Your full video script here, following the structure above]
+    // --- Section: Introduction and Hook ---
+    [Your intro script here, leveraging competitor insights for the hook]
+
+    // --- Section: [Example: Setting Up The Environment] ---
+    [Script content for this section]
+
+    // --- Section: [Example: Core Task Step-by-Step] ---
+    [Script content for core task, broken into further sub-sections if logical for longer videos]
+
+    // --- Section: [Example: Advanced Tip or Common Pitfall] ---
+    [Script content for tips/troubleshooting, informed by competitor insights]
+
+    // --- Section: Conclusion and Call to Action ---
+    [Your conclusion script here]
 
     **Part 2: Video Production Instructions**
-    [Practical tips for OBS screen recording for THIS SPECIFIC SCRIPT: e.g., "Zoom in on the Discord 'App Directory' button when mentioned.", "Clearly show the 'jockey music' search bar interaction.", "Use on-screen text to highlight the command to play music.", "Keep a steady, easy-to-follow pace during the steps."]
+    [Practical tips for OBS screen recording for THIS SPECIFIC SCRIPT, emphasizing visual support for each section and the unique angle: e.g., "Clearly show how this approach differs from what competitor X does.", "Use on-screen text to highlight key differentiators or benefits derived from the strategic angle."]
 
     **Part 3: Suggested Script Resources**
-    [If Google Search identifies relevant documentation, tools, or assets related to ${appSoftware || niche}, list their URIs here. If not, state "No specific external resources identified by search for this topic."]
+    [If Google Search identifies relevant documentation, tools, or assets, list their URIs here. If not, state "No specific external resources identified by search for this topic."]
     \`\`\`
 
-**CRITICAL: Adhere to the style and directness of the provided examples.**
-${exampleScript1}
-${exampleScript2}
+**CRITICAL: Adhere to the style and directness of the provided examples. The script MUST be clearly sectioned using the "// --- Section: ..." comment format. The competitor insights MUST be used to make the script unique and valuable.**
 `;
 
   try {
@@ -394,9 +404,9 @@ ${exampleScript2}
       config: {
         systemInstruction: systemInstruction,
         tools: [{ googleSearch: {} }],
-        temperature: 0.6, // Slightly lower for more factual script
+        temperature: 0.65, 
         topP: 0.9,
-        topK: 40,
+        topK: 45,
       },
     });
 
@@ -407,10 +417,9 @@ ${exampleScript2}
       return { script: "Error: Empty response from AI.", videoInstructions: "", suggestedResources: [] };
     }
     
-    // Regex to find parts, case-insensitive for headings, flexible with optional asterisks
-    const scriptMatch = rawFullText.match(/\*\*Part 1: Video Script\**\s*([\s\S]*?)(?=\*\*Part 2: Video Production Instructions\**|$)/i);
-    const instructionsMatch = rawFullText.match(/\*\*Part 2: Video Production Instructions\**\s*([\s\S]*?)(?=\*\*Part 3: Suggested Script Resources\**|$)/i);
-    const resourcesMatch = rawFullText.match(/\*\*Part 3: Suggested Script Resources\**\s*([\s\S]*)/i);
+    const scriptMatch = rawFullText.match(/\*\*Part 1: Video Script\*\*\s*([\s\S]*?)(?=\*\*Part 2: Video Production Instructions\*\*|$)/i);
+    const instructionsMatch = rawFullText.match(/\*\*Part 2: Video Production Instructions\*\*\s*([\s\S]*?)(?=\*\*Part 3: Suggested Script Resources\*\*|$)/i);
+    const resourcesMatch = rawFullText.match(/\*\*Part 3: Suggested Script Resources\*\*\s*([\s\S]*)/i);
 
     const scriptContent = scriptMatch?.[1]?.trim() ?? "AI failed to generate script content in the expected format.";
     const instructionsContent = instructionsMatch?.[1]?.trim() ?? "AI failed to generate production instructions in the expected format.";
@@ -425,7 +434,7 @@ ${exampleScript2}
 
 
     return {
-      script: sanitizeAIResponseText(scriptContent), // Final sanitization for each part
+      script: sanitizeAIResponseText(scriptContent), 
       videoInstructions: sanitizeAIResponseText(instructionsContent),
       suggestedResources: suggestedResourceList.map(r => sanitizeAIResponseText(r)),
     };
@@ -753,25 +762,25 @@ export const analyzeYouTubeCompetitorsForAngles = async (
     }
 
     const competitorInfo = competitorVideos
-      .map(vid => `- Title: "${vid.title}"\n  Views: ${vid.viewCountText}\n  Age: ${vid.publishedAtText}\n  Channel Subscribers: ${vid.channelSubscriberCountText || 'N/A'}\n  Description Snippet: "${vid.descriptionSnippet || 'N/A'}"`)
-      .slice(0, 7) 
+      .map(vid => `- Title: "${vid.title}"\n  Duration: ${vid.duration || 'N/A'}\n  Type: ${vid.videoType || 'N/A'}\n  Views: ${vid.viewCountText}\n  Age: ${vid.publishedAtText}\n  Channel Subscribers: ${vid.channelSubscriberCountText || 'N/A'}\n  Description Snippet: "${vid.descriptionSnippet || 'N/A'}"`)
+      .slice(0, 7) // Limit to first 7-10 for prompt length
       .join('\n---\n');
 
     const prompt = `You are an expert YouTube Content Strategist.
 Your task is to analyze the provided competitor video data for the target video idea: "${ideaText}".
 
-Competitor Videos Data:
+Competitor Videos Data (includes Title, Duration, Type (Video/Short), Views, Age, Subscribers, Description Snippet):
 ${competitorInfo.length > 0 ? competitorInfo : "No competitor videos found in the top search results."}
 
 Based on this data, provide:
 1.  **Overall Assessment (1-2 concise sentences):** Briefly summarize the competitive landscape.
-    *   Is it crowded, sparse, or dominated by old content?
+    *   Is it crowded, sparse, or dominated by old content? Are there many Shorts or longer videos?
     *   Are there videos from channels with relatively low subscriber counts getting high views (this indicates strong organic topic demand)?
     *   What is the general sentiment or quality of existing top videos?
     *   Critically, if keywords like "untapped," "secrets," "hidden," or similar appear in the original idea text ("${ideaText}"), assess if the competitor data truly reflects a gap related to these "untapped" aspects. For example, if "${ideaText}" is "Untapped ChatGPT Prompt Secrets," and no competitor videos explicitly cover "prompt secrets" or "bad results," highlight this as a significant content gap.
 
 2.  **Actionable Strategic Angles (2-3 distinct bullet points):** Suggest specific, actionable angles or improvements a new video on "${ideaText}" could focus on to differentiate itself and offer more value. For each angle, be specific and explain *why* it's a good strategy based on the competitor data (or lack thereof).
-    *   **Content Gaps/Depth:** If competitors miss key aspects or only cover them superficially, suggest covering these. (e.g., "Dive deeper into [specific sub-topic] which current videos only touch on.")
+    *   **Content Gaps/Depth/Format:** If competitors miss key aspects, only cover them superficially, or if a different format (e.g., a Short for a quick tip vs. long-form for deep dive) would be better. (e.g., "Dive deeper into [specific sub-topic] which current videos only touch on." or "Create a concise Short if existing content is all long-form and a quick tip is valuable.")
     *   **Freshness/Updates:** If existing videos are old (e.g., >1-2 years), emphasize creating an up-to-date version. (e.g., "Create an 'Update for [Current Year]' guide, as most top videos are from [Year].")
     *   **Unique Value Proposition:** How can the new video be clearer, more engaging, solve a specific problem better, or offer a unique perspective? (e.g., "Focus on a hands-on, project-based tutorial if others are mostly theoretical," or "Offer a 'pro tips' angle if beginner content is saturated.") If the idea implies an "untapped" or "secret" angle that competitors don't address, make this the primary value proposition.
     *   **Niche Down/Audience Focus:** Could targeting a specific sub-audience or use-case be beneficial? (e.g., "Create a guide specifically for [e.g., small business owners] using [Tool] for [Task related to IdeaText]").
@@ -785,9 +794,10 @@ Then, on a new line, "Actionable Angles:" followed by bulleted suggestions (usin
 
 Example:
 AI STRATEGIC ANGLE:
-Overall Assessment: The topic has several videos, but many are over two years old and focus on broad overviews. One video from a channel with only 5K subscribers has 100K views, indicating high interest in practical application.
+Overall Assessment: The topic has several videos, but many are over two years old and focus on broad overviews. One video from a channel with only 5K subscribers has 100K views, indicating high interest in practical application. Most are long-form; no Shorts seen.
 Actionable Angles:
 *   Develop a comprehensive, up-to-date ([Current Year]) tutorial focusing on practical application with a real-world project example. Existing content lacks this depth.
+*   Consider creating a 30-60 second YouTube Short summarizing the #1 key takeaway or most common mistake from "${ideaText}" as existing content is all long-form.
 *   If competitors are mostly theoretical, create a step-by-step, hands-on guide showing the "how-to" in detail for a specific challenging aspect of "${ideaText}".
 *   Target beginners specifically if current videos assume too much prior knowledge. Title could be: "${ideaText} - The ULTIMATE Beginner's Guide ([Current Year])".
 `;

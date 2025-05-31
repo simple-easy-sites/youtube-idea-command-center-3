@@ -27,20 +27,54 @@ const formatSubscriberCount = (count: string): string => {
     return `${num} subscribers`;
 };
 
+// Helper function to parse ISO 8601 duration (e.g., PT2M30S) into human-readable format and seconds
+function parseISO8601Duration(isoDuration: string | undefined): { formatted: string; totalSeconds: number } {
+  if (!isoDuration || !isoDuration.startsWith('PT')) return { formatted: 'N/A', totalSeconds: 0 };
+
+  const regex = /PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/;
+  const matches = isoDuration.match(regex);
+
+  if (!matches) return { formatted: 'N/A', totalSeconds: 0 };
+
+  const hours = matches[1] ? parseInt(matches[1]) : 0;
+  const minutes = matches[2] ? parseInt(matches[2]) : 0;
+  const seconds = matches[3] ? parseInt(matches[3]) : 0;
+  
+  const totalSeconds = (hours * 3600) + (minutes * 60) + seconds;
+
+  if (hours === 0 && minutes === 0 && seconds === 0 && isoDuration !== 'PT0S') return { formatted: 'N/A', totalSeconds: 0 };
+
+  let formattedStr = "";
+  if (hours > 0) {
+    formattedStr += `${hours}:`;
+    formattedStr += `${minutes < 10 ? '0' : ''}${minutes}:`;
+  } else {
+    formattedStr += `${minutes}:`;
+  }
+  formattedStr += `${seconds < 10 ? '0' : ''}${seconds}`;
+  
+  return { formatted: formattedStr, totalSeconds };
+}
+
 
 export const searchYouTubeForExistingVideos = async (
   query: string,
-  maxResults: number = 10 // Increased from 5 to 10
+  maxResults: number = 15 // Default to 15, can go up to 20
 ): Promise<YouTubeVideoResult[]> => {
+  const actualMaxResults = Math.min(Math.max(maxResults, 10), 20); // Ensure between 10 and 20
+
   if (!YOUTUBE_API_KEY || YOUTUBE_API_KEY === "YOUR_ACTUAL_YOUTUBE_API_KEY_HERE" || YOUTUBE_API_KEY === "MISSING_YOUTUBE_API_KEY") {
     console.warn("YouTube Service: Missing/placeholder VITE_YOUTUBE_API_KEY. Returning mock data.");
     await new Promise(resolve => setTimeout(resolve, 500)); 
     const mockResults: YouTubeVideoResult[] = [];
-    for (let i = 1; i <= maxResults; i++) {
+    for (let i = 1; i <= actualMaxResults; i++) {
       const monthsAgo = Math.floor(Math.random() * 36) + 1; 
       const mockDate = new Date();
       mockDate.setMonth(mockDate.getMonth() - monthsAgo);
       const mockSubscribers = Math.floor(Math.random() * 100000) + 100;
+      const randomSeconds = Math.floor(Math.random() * (20 * 60)) + 15; // 15s to 20min
+      const mockDurationData = parseISO8601Duration(`PT${Math.floor(randomSeconds/60)}M${randomSeconds%60}S`);
+      
       mockResults.push({
         title: `[MOCK] How to ${query.substring(0, 40)}... - Video ${i}`,
         videoId: `mockVideoId_${i}_${Date.now()}`,
@@ -51,7 +85,9 @@ export const searchYouTubeForExistingVideos = async (
         viewCountText: `${Math.floor(Math.random() * 1000) +1}K views`,
         publishedAtText: monthsAgo > 12 ? `${Math.floor(monthsAgo/12)} year(s) ago` : `${monthsAgo} month(s) ago`,
         publishedAtDate: mockDate,
-        descriptionSnippet: `This is a mock description for the video about ${query.substring(0,40)}. It covers key aspects and provides useful information for viewers. Mock video ${i}.`
+        descriptionSnippet: `This is a mock description for the video about ${query.substring(0,40)}. It covers key aspects and provides useful information for viewers. Mock video ${i}.`,
+        duration: mockDurationData.formatted,
+        videoType: mockDurationData.totalSeconds < 61 ? 'Short' : 'Video',
       });
     }
     return mockResults;
@@ -67,10 +103,10 @@ export const searchYouTubeForExistingVideos = async (
       part: 'snippet',
       q: query,
       type: 'video',
-      maxResults: maxResults.toString(),
+      maxResults: actualMaxResults.toString(),
       key: YOUTUBE_API_KEY,
-      relevanceLanguage: 'en', // Added for better search results
-      regionCode: 'US', // Added for better search results
+      relevanceLanguage: 'en', 
+      regionCode: 'US', 
     });
     const searchResponse = await fetch(`${YOUTUBE_SEARCH_URL}?${searchParams.toString()}`);
     if (!searchResponse.ok) {
@@ -93,9 +129,9 @@ export const searchYouTubeForExistingVideos = async (
     const videoIds = videoSnippets.map((snippet: any) => snippet.videoId);
     const channelIds = [...new Set(videoSnippets.map((snippet: any) => snippet.channelId))]; // Unique channel IDs
 
-    // Step 2: Get statistics (views, etc.) and full snippet for found videos
+    // Step 2: Get statistics (views, etc.), full snippet, and contentDetails (duration) for found videos
     const videoDetailsParams = new URLSearchParams({
-      part: 'statistics,snippet', 
+      part: 'statistics,snippet,contentDetails', 
       id: videoIds.join(','),
       key: YOUTUBE_API_KEY,
     });
@@ -169,6 +205,7 @@ export const searchYouTubeForExistingVideos = async (
       const description = item.snippet?.description || '';
       const descriptionSnippet = description.substring(0, 150) + (description.length > 150 ? '...' : '');
       const channelId = item.snippet?.channelId;
+      const durationData = parseISO8601Duration(item.contentDetails?.duration);
 
       return {
         title: item.snippet?.title || 'Unknown Title',
@@ -181,6 +218,8 @@ export const searchYouTubeForExistingVideos = async (
         publishedAtText: publishedAtText,
         publishedAtDate: publishedAtDate,
         descriptionSnippet: descriptionSnippet,
+        duration: durationData.formatted,
+        videoType: durationData.totalSeconds > 0 && durationData.totalSeconds < 61 ? 'Short' : (durationData.totalSeconds >= 61 ? 'Video' : 'Unknown'),
       };
     }) || [];
     return results;

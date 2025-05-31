@@ -1,4 +1,5 @@
 
+
 import React, { useState } from 'react';
 import { VideoIdea, IdeaStatus, IdeaPriority, GroundingChunk, TitleSuggestion, UntappedScore } from '../types';
 import { PRIORITY_OPTIONS, STATUS_BORDER_CLASSES } from '../constants';
@@ -85,7 +86,10 @@ const UntappedScoreBadge: React.FC<{ score?: UntappedScore, summary?: string }> 
   );
 };
 
-const scriptLengthOptions = Array.from({ length: 10 }, (_, i) => ({ value: (i + 1).toString(), label: `${i + 1} min` }));
+const scriptLengthOptions = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 15, 18, 20].map(min => ({
+    value: min.toString(),
+    label: `${min} min`
+}));
 
 
 export const IdeaCard: React.FC<IdeaCardProps> = ({ 
@@ -101,7 +105,7 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({
     isLoadingExpansionGlobal
 }) => {
   
-  const [targetScriptLength, setTargetScriptLength] = useState<number>(idea.scriptLengthMinutes || 4);
+  const [targetScriptLength, setTargetScriptLength] = useState<number>(idea.scriptLengthMinutes || 5); // Default to 5 min or stored
   const [isGeneratingScriptForThisCard, setIsGeneratingScriptForThisCard] = useState(false);
   const [isExpandingForThisCard, setIsExpandingForThisCard] = useState(false);
   const [isResearchingKeywordsForThisCard, setIsResearchingKeywordsForThisCard] = useState(false);
@@ -129,6 +133,7 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({
 
   const handleGenerateScriptClick = async () => {
     setIsGeneratingScriptForThisCard(true);
+    // Pass the current idea.text (potentially optimized), keywords, and AI competitive angle
     await onGenerateScriptAndInstructions(idea.id, targetScriptLength);
     setIsGeneratingScriptForThisCard(false);
   };
@@ -143,10 +148,12 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({
   const isHighPriorityNonTerminal = idea.priority === IdeaPriority.HIGH && idea.status !== IdeaStatus.VIDEO_MADE && idea.status !== IdeaStatus.DISCARDED;
   
   const isPrioritized = idea.status === IdeaStatus.PRIORITIZED; 
+  const canGenerateScript = isPrioritized && idea.aiCompetitiveAngle && idea.untappedScore !== 'Not Assessed' && idea.untappedScore !== 'Error';
+
 
   const isAnyActionLoading = idea.isScriptLoading || idea.isExpanding || idea.isKeywordsLoading || idea.isTitleOptimizing ||
                              isGeneratingScriptForThisCard || isExpandingForThisCard || isResearchingKeywordsForThisCard || isOptimizingTitleForThisCard ||
-                             !!isLoadingExpansionGlobal;
+                             !!isLoadingExpansionGlobal || idea.isYouTubeLoading; // Added idea.isYouTubeLoading here
   
   const detailTextColor = "text-[var(--text-secondary)]";
   const labelTextColor = "text-[var(--text-tertiary)]";
@@ -209,12 +216,14 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({
       render: (k: string, i: number) => <li key={k + i} className="text-sm interactive-list-item p-1">{k}</li>,
       groundingChunks: idea.keywordSearchGroundingChunks,
     },
-    {
-      condition: !!(idea.script && idea.status === IdeaStatus.PRIORITIZED),
-      title: "Generated Script Snippet",
-      type: 'pre',
-      data: idea.script ? idea.script.substring(0, 250) + (idea.script.length > 250 ? "..." : "") : "",
-    },
+     // Script snippet is now part of ScriptViewerModal, so removed from here for brevity, 
+     // but can be re-added if a small preview is still desired.
+    // {
+    //   condition: !!(idea.script && isPrioritized), // only show if prioritized, not for NEW etc.
+    //   title: "Generated Script Snippet",
+    //   type: 'pre',
+    //   data: idea.script ? idea.script.substring(0, 250) + (idea.script.length > 250 ? "..." : "") : "",
+    // },
     {
       condition: !!(idea.expandedIdeas && idea.expandedIdeas.length > 0),
       title: "Expanded Idea Titles",
@@ -270,88 +279,101 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({
           className="!text-sm !py-2.5 !bg-opacity-70"
         />
       </div>
-
+      
       {isPrioritized && (
-        <div className="pt-4 border-t border-[var(--glass-border-color)] space-y-3.5"> 
-           <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2 items-end">
-            <Select
-              label="Video Length (min)"
-              id={`scriptLength-${idea.id}`}
-              options={scriptLengthOptions}
-              value={targetScriptLength.toString()}
-              onChange={(e) => setTargetScriptLength(parseInt(e.target.value))}
-              className="!text-sm !py-2"
-            />
-            <Button 
-              variant="secondary" 
-              size="sm" 
-              onClick={handleGenerateScriptClick}
-              isLoading={isGeneratingScriptForThisCard || idea.isScriptLoading}
-              disabled={isAnyActionLoading}
-              className="w-full sm:w-auto !font-medium !tracking-wide !py-2.5"
-            >
-              <ScriptIcon /> Generate Script
-            </Button>
-          </div>
-          <Button 
-            variant="secondary" 
-            size="sm" 
-            onClick={handleGenerateTitleSuggestionsClick}
-            isLoading={isOptimizingTitleForThisCard || idea.isTitleOptimizing}
-            disabled={isAnyActionLoading}
-            className="w-full !font-medium !tracking-wide" 
-          >
-            <TitleOptimizeIcon /> Optimize Title
-          </Button>
-          <Button 
-            variant="secondary" 
-            size="sm" 
-            onClick={handleGenerateKeywordsClick}
-            isLoading={isResearchingKeywordsForThisCard || idea.isKeywordsLoading}
-            disabled={isAnyActionLoading}
-            className="w-full !font-medium !tracking-wide"
-          >
-            <KeywordIcon /> Research Keywords
-          </Button>
-          <Button 
-            variant="secondary" 
-            size="sm" 
-            onClick={handleExpandIdeaClick}
-            isLoading={isExpandingForThisCard || idea.isExpanding}
-            disabled={isAnyActionLoading}
-            className="w-full !font-medium !tracking-wide"
-          >
-            <ExpandIcon /> Expand Ideas
-          </Button>
-        </div>
+        <CollapsibleSection
+          title="Script Generation & Content Plan"
+          defaultOpen={true}
+          headerClassName="!text-base !font-semibold !py-3.5 !px-4 !bg-opacity-70"
+          contentClassName="!pt-4 !pb-4 !px-4 !bg-opacity-50"
+          className="!border-opacity-60 !rounded-lg mt-3"
+        >
+            <div className="space-y-3.5">
+                <Button 
+                    variant="secondary" 
+                    size="sm" 
+                    onClick={handleGenerateTitleSuggestionsClick}
+                    isLoading={isOptimizingTitleForThisCard || idea.isTitleOptimizing}
+                    disabled={isAnyActionLoading}
+                    className="w-full !font-medium !tracking-wide" 
+                >
+                    <TitleOptimizeIcon /> Optimize Title
+                </Button>
+                <Button 
+                    variant="secondary" 
+                    size="sm" 
+                    onClick={handleGenerateKeywordsClick}
+                    isLoading={isResearchingKeywordsForThisCard || idea.isKeywordsLoading}
+                    disabled={isAnyActionLoading}
+                    className="w-full !font-medium !tracking-wide"
+                >
+                    <KeywordIcon /> Research Keywords
+                </Button>
+                <Button 
+                    variant="secondary" // Changed from ghost
+                    size="sm" 
+                    onClick={() => onShowYouTubeValidation(idea.id)}
+                    isLoading={idea.isYouTubeLoading}
+                    disabled={isAnyActionLoading} // isAnyActionLoading already includes idea.isYouTubeLoading
+                    className="w-full !font-medium !text-blue-300 hover:!text-blue-200 !border-blue-500/60 hover:!border-blue-400 !bg-blue-600/20 hover:!bg-blue-600/40 !tracking-wide"
+                  >
+                   <YouTubeIcon/> 
+                   {idea.youtubeResults && idea.youtubeResults.length > 0 && idea.untappedScore !== 'Not Assessed' ? 'Re-validate & View Details' : 'Validate on YouTube'}
+                </Button>
+
+                {/* Conditional block for script length and generation */}
+                {canGenerateScript && (
+                    <div className="pt-3 mt-3 border-t border-[var(--glass-border-color)] space-y-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2 items-end">
+                            <Select
+                                label="Target Video Length"
+                                id={`scriptLength-${idea.id}`}
+                                options={scriptLengthOptions}
+                                value={targetScriptLength.toString()}
+                                onChange={(e) => setTargetScriptLength(parseInt(e.target.value))}
+                                className="!text-sm !py-2"
+                                // containerClassName="flex-grow"
+                            />
+                            <Button 
+                                variant="primary" 
+                                size="sm" 
+                                onClick={handleGenerateScriptClick}
+                                isLoading={isGeneratingScriptForThisCard || idea.isScriptLoading}
+                                disabled={isAnyActionLoading}
+                                className="w-full sm:w-auto !font-medium !tracking-wide !py-2.5"
+                            >
+                                <ScriptIcon /> Generate Script
+                            </Button>
+                        </div>
+                         <p className="text-xs text-center text-[var(--text-tertiary)] -mt-1">Ensure YouTube validation is done for best script results using AI angle.</p>
+                    </div>
+                )}
+
+                {(idea.script || idea.videoInstructions || idea.suggestedResources) && (
+                    <Button 
+                        variant="primary" 
+                        size="sm" 
+                        onClick={() => onShowScriptModal(idea)}
+                        disabled={isAnyActionLoading && !(isGeneratingScriptForThisCard || idea.isScriptLoading)} // Only disable if other actions are loading, not script gen itself
+                        className="w-full !font-medium mt-2 !tracking-wide"
+                    >
+                       <ScriptIcon /> View Full Content Plan
+                    </Button>
+                )}
+                 <Button 
+                    variant="secondary" 
+                    size="sm" 
+                    onClick={handleExpandIdeaClick}
+                    isLoading={isExpandingForThisCard || idea.isExpanding}
+                    disabled={isAnyActionLoading}
+                    className="w-full !font-medium !tracking-wide"
+                >
+                    <ExpandIcon /> Expand Ideas
+                </Button>
+            </div>
+        </CollapsibleSection>
       )}
       
-      {(idea.script || idea.videoInstructions || idea.suggestedResources) && isPrioritized && (
-         <Button 
-            variant="primary" 
-            size="sm" 
-            onClick={() => onShowScriptModal(idea)}
-            disabled={isAnyActionLoading}
-            className="w-full !font-medium mt-3 !tracking-wide"
-          >
-           <ScriptIcon /> View Full Content Plan
-          </Button>
-      )}
-
-
-      <div className="mt-1.5">
-         <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={() => onShowYouTubeValidation(idea.id)}
-            isLoading={idea.isYouTubeLoading}
-            disabled={idea.isYouTubeLoading || isAnyActionLoading}
-            className="w-full !font-medium text-blue-400 border-blue-500/50 hover:bg-blue-700/40 hover:text-blue-300 hover:border-blue-500/70 !tracking-wide"
-          >
-           <YouTubeIcon/> 
-           {idea.youtubeResults && idea.youtubeResults.length > 0 && idea.untappedScore !== 'Not Assessed' ? 'Re-validate & View Details' : 'Validate on YouTube'}
-          </Button>
-      </div>
 
       {allSectionDefinitions
         .filter(section => section.condition)
@@ -361,7 +383,7 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({
             title={section.title}
             headerClassName="!text-sm !font-medium !py-3 !px-4 !bg-opacity-60"
             contentClassName="!pt-3 !pb-4 !px-4 !bg-opacity-40"
-            className="!border-opacity-50 !rounded-lg"
+            className="!border-opacity-50 !rounded-lg mt-2.5" // Added mt-2.5
           >
             {section.type === 'pre' ? (
               <pre className="whitespace-pre-wrap text-xs text-[var(--text-secondary)] bg-black/20 p-3.5 rounded-md max-h-40 overflow-y-auto border border-[var(--glass-border-color)] shadow-inner leading-relaxed">

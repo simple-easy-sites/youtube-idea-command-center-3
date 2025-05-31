@@ -14,7 +14,7 @@ interface YouTubeViewerModalProps {
   onForceRefreshValidation: (ideaId: string, forceRefresh: boolean) => void;
 }
 
-type SortOption = 'viewCountDesc' | 'publishedAtDesc' | 'relevance';
+type SortOption = 'relevance' | 'viewCountDesc' | 'publishedAtDesc' | 'publishedAtAsc' | 'durationAsc' | 'durationDesc';
 
 const UntappedScoreDisplay: React.FC<{ score?: UntappedScore, summary?: string }> = ({ score, summary }) => {
   if (!score || score === 'Not Assessed') {
@@ -63,11 +63,18 @@ const YouTubeVideoCard: React.FC<{ video: YouTubeVideoResult }> = ({ video }) =>
       className="glass-card-subtle !p-4 rounded-xl flex flex-col sm:flex-row items-start space-x-0 sm:space-x-4 hover:!shadow-sky-500/50 hover:!border-sky-400/70 transition-all duration-300 group animate-fadeIn" 
     >
       {video.thumbnailUrl && (
-        <img 
-          src={video.thumbnailUrl} 
-          alt={video.title} 
-          className="w-full sm:w-48 h-auto sm:h-[108px] object-cover rounded-lg mb-3 sm:mb-0 shadow-lg group-hover:shadow-xl transition-shadow border border-[var(--glass-border-color)]" 
-        />
+        <div className="relative w-full sm:w-48 flex-shrink-0 mb-3 sm:mb-0">
+          <img 
+            src={video.thumbnailUrl} 
+            alt={video.title} 
+            className="w-full h-auto sm:h-[108px] object-cover rounded-lg shadow-lg group-hover:shadow-xl transition-shadow border border-[var(--glass-border-color)]" 
+          />
+          {video.duration && video.duration !== "N/A" && (
+            <span className="absolute bottom-1.5 right-1.5 bg-black/80 text-white text-xs px-2 py-0.5 rounded-md font-medium">
+              {video.duration}
+            </span>
+          )}
+        </div>
       )}
       <div className="flex-1">
         <h4 className="text-md font-semibold text-sky-300 group-hover:text-sky-100 transition-colors line-clamp-2" title={video.title}>
@@ -79,7 +86,14 @@ const YouTubeVideoCard: React.FC<{ video: YouTubeVideoResult }> = ({ video }) =>
         )}
         <div className="flex items-center justify-between text-xs text-[var(--text-tertiary)] group-hover:text-[var(--text-secondary)] transition-colors mt-2">
           <span>{video.viewCountText}</span>
-          <span>{video.publishedAtText}</span>
+          <div className="flex items-center space-x-2">
+            {video.videoType && video.videoType !== "Unknown" && (
+                <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${video.videoType === 'Short' ? 'bg-rose-500/30 text-rose-300 border border-rose-400/50' : 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/40'}`}>
+                    {video.videoType}
+                </span>
+            )}
+            <span>{video.publishedAtText}</span>
+          </div>
         </div>
       </div>
     </a>
@@ -88,7 +102,7 @@ const YouTubeVideoCard: React.FC<{ video: YouTubeVideoResult }> = ({ video }) =>
 
 
 export const YouTubeViewerModal: React.FC<YouTubeViewerModalProps> = ({ isOpen, onClose, idea, onForceRefreshValidation }) => {
-  const [sortOrder, setSortOrder] = useState<SortOption>('viewCountDesc');
+  const [sortOrder, setSortOrder] = useState<SortOption>('relevance');
 
   if (!isOpen || !idea) return null;
 
@@ -111,15 +125,37 @@ export const YouTubeViewerModal: React.FC<YouTubeViewerModalProps> = ({ isOpen, 
     return isNaN(num) ? 0 : num * multiplier;
   };
   
+  const parseDurationToSeconds = (duration?: string): number => {
+    if (!duration || duration === "N/A") return 0;
+    const parts = duration.split(':').map(Number);
+    let seconds = 0;
+    if (parts.length === 3) { // HH:MM:SS
+      seconds = parts[0] * 3600 + parts[1] * 60 + parts[2];
+    } else if (parts.length === 2) { // MM:SS
+      seconds = parts[0] * 60 + parts[1];
+    } else if (parts.length === 1) { // SS
+      seconds = parts[0];
+    }
+    return seconds;
+  };
+  
   const sortedResults = useMemo(() => {
     const resultsCopy = [...rawResults];
-    if (sortOrder === 'viewCountDesc') {
-      return resultsCopy.sort((a, b) => parseViewCount(b.viewCountText) - parseViewCount(a.viewCountText));
+    switch (sortOrder) {
+        case 'viewCountDesc':
+            return resultsCopy.sort((a, b) => parseViewCount(b.viewCountText) - parseViewCount(a.viewCountText));
+        case 'publishedAtDesc':
+            return resultsCopy.sort((a, b) => (b.publishedAtDate?.getTime() || 0) - (a.publishedAtDate?.getTime() || 0));
+        case 'publishedAtAsc':
+            return resultsCopy.sort((a, b) => (a.publishedAtDate?.getTime() || 0) - (b.publishedAtDate?.getTime() || 0));
+        case 'durationAsc':
+            return resultsCopy.sort((a, b) => parseDurationToSeconds(a.duration) - parseDurationToSeconds(b.duration));
+        case 'durationDesc':
+            return resultsCopy.sort((a, b) => parseDurationToSeconds(b.duration) - parseDurationToSeconds(a.duration));
+        case 'relevance':
+        default:
+            return resultsCopy; 
     }
-    if (sortOrder === 'publishedAtDesc') {
-      return resultsCopy.sort((a, b) => (b.publishedAtDate?.getTime() || 0) - (a.publishedAtDate?.getTime() || 0));
-    }
-    return resultsCopy; // Default 'relevance' (original order from API)
   }, [rawResults, sortOrder]);
 
 
@@ -133,6 +169,9 @@ export const YouTubeViewerModal: React.FC<YouTubeViewerModalProps> = ({ isOpen, 
     { value: 'relevance', label: 'Sort by Relevance' },
     { value: 'viewCountDesc', label: 'Sort by Views (High to Low)' },
     { value: 'publishedAtDesc', label: 'Sort by Newest First' },
+    { value: 'publishedAtAsc', label: 'Sort by Oldest First' },
+    { value: 'durationAsc', label: 'Sort by Length (Short to Long)' },
+    { value: 'durationDesc', label: 'Sort by Length (Long to Short)' },
   ];
 
   return (
@@ -178,7 +217,7 @@ export const YouTubeViewerModal: React.FC<YouTubeViewerModalProps> = ({ isOpen, 
               {sortedResults.length > 0 ? (
                 <div className="space-y-5">
                   <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-3 space-y-2 sm:space-y-0">
-                    <h3 className="text-lg font-semibold text-sky-200">Similar YouTube Videos:</h3>
+                    <h3 className="text-lg font-semibold text-sky-200">Similar YouTube Videos ({sortedResults.length}):</h3>
                     <Select
                         id="youtubeSortSelect"
                         options={sortOptions}

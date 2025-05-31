@@ -36,6 +36,8 @@ export interface YouTubeVideoResult {
   publishedAtText?: string; 
   publishedAtDate?: Date; 
   descriptionSnippet?: string; 
+  duration?: string; // e.g., "2:35", "0:45"
+  videoType?: 'Video' | 'Short' | 'Unknown'; // Classification
 }
 
 export interface TitleSuggestion {
@@ -60,7 +62,7 @@ export interface VideoIdea {
   script?: string; 
   videoInstructions?: string; 
   suggestedResources?: string[]; 
-  scriptLengthMinutes?: number; 
+  scriptLengthMinutes?: number; // Target length, can be up to 20 minutes now
   
   expandedIdeas?: string[]; 
   expandedIdeasWithKeywords?: Array<{text: string, keywords: string[]}>; 
