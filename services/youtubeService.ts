@@ -28,7 +28,7 @@ const formatSubscriberCount = (count: string): string => {
 };
 
 // Helper function to parse ISO 8601 duration (e.g., PT2M30S) into human-readable format and seconds
-function parseISO8601Duration(isoDuration: string | undefined): { formatted: string; totalSeconds: number } {
+export function parseISO8601Duration(isoDuration: string | undefined): { formatted: string; totalSeconds: number } {
   if (!isoDuration || !isoDuration.startsWith('PT')) return { formatted: 'N/A', totalSeconds: 0 };
 
   const regex = /PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/;
