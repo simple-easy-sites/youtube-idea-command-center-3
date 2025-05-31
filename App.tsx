@@ -124,15 +124,19 @@ const App: React.FC = () => {
   };
 
 
-  const handleGenerateIdeas = async (userQuery: string, niche: string, appSoftware: string) => {
+  const handleGenerateIdeas = async (userQuery: string, niche: string, appSoftware: string, tutorialType: string) => {
     if (!currentProfile) {
       addFlashMessage('error', 'Please select or create a profile before generating ideas.');
+      return;
+    }
+    if (!niche && !appSoftware && !userQuery && !tutorialType) {
+      addFlashMessage('error', 'Please provide some input (Niche, App, Tutorial Type, or Refinement) to generate ideas.');
       return;
     }
     setIsGenerating(true);
     setProactiveRecommendations(null);
     try {
-      const { ideas: generatedIdeasWithRationale, strategicGuidance } = await generateIdeasWithGemini(userQuery, niche, appSoftware, NEW_HIGH_RPM_CATEGORIES);
+      const { ideas: generatedIdeasWithRationale, strategicGuidance } = await generateIdeasWithGemini(userQuery, niche, appSoftware, tutorialType, NEW_HIGH_RPM_CATEGORIES);
       
       if (strategicGuidance) {
         setProactiveRecommendations(strategicGuidance); 
@@ -145,6 +149,7 @@ const App: React.FC = () => {
           aiRationale: ideaWithRationale.aiRationale.trim(),
           niche: niche || 'AI Suggested', 
           appSoftware: appSoftware || 'AI Suggested',
+          // tutorialType: tutorialType, // Store if needed on idea itself, for now it's an input to generation
           source: 'AI Generated',
           priority: IdeaPriority.LOW,
           status: IdeaStatus.NEW,

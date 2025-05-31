@@ -1,6 +1,6 @@
 
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
-import { GroundingChunk, TitleSuggestion, AIStrategicGuidance, YouTubeVideoResult, HighRpmNicheCategory, NEW_HIGH_RPM_CATEGORIES } from '../types'; // Added NEW_HIGH_RPM_CATEGORIES
+import { GroundingChunk, TitleSuggestion, AIStrategicGuidance, YouTubeVideoResult, HighRpmNicheCategory, NEW_HIGH_RPM_CATEGORIES, TutorialType } from '../types';
 
 // Attempt to use process.env.API_KEY first, then fallback to import.meta.env.VITE_API_KEY
 let apiKeyToUse = process.env.API_KEY;
@@ -117,38 +117,40 @@ export const generateIdeasWithGemini = async (
   userQuery: string, 
   nicheName: string, 
   appSoftware: string, 
+  tutorialType: string,
   highRpmNicheContext: HighRpmNicheCategory[] 
 ): Promise<{ ideas: Array<{text: string, keywords: string[], aiRationale: string}>; strategicGuidance: AIStrategicGuidance | null }> => {
   if (shouldUseMockData) {
     console.warn("Gemini (generateIdeas): Using mock data due to API key issue (missing/placeholder or forced mock).");
     await new Promise(resolve => setTimeout(resolve, 500));
-    const exampleNiche = nicheName || "Personal Finance";
-    const exampleApp = appSoftware || (exampleNiche === "Personal Finance" ? "Budgeting Apps" : "Relevant Software");
-    const combinedConceptExample = userQuery || `Beginner's Guide to ${exampleApp} in ${exampleNiche}`;
+    const exampleNiche = nicheName || "AI & Machine Learning";
+    const exampleApp = appSoftware || (exampleNiche === "AI & Machine Learning" ? "ChatGPT" : "Relevant Software");
+    const exampleTutorialType = tutorialType || TutorialType.BEGINNER_GUIDE;
+    const combinedConceptExample = userQuery || `${exampleTutorialType} for ${exampleApp} in ${exampleNiche}`;
     return {
         ideas: [
             {
                 text: `Mock Idea: ${combinedConceptExample} (2024 Update)`,
-                keywords: [`${exampleApp} tutorial`, `${exampleNiche} for beginners`, `how to use ${exampleApp}`],
-                aiRationale: `This mock idea targets a common search query for ${combinedConceptExample}. The '2024 Update' provides a fresh angle. Keywords focus on beginner intent.`
+                keywords: [`${exampleApp} tutorial`, `${exampleNiche} for beginners`, `how to use ${exampleApp} ${exampleTutorialType.toLowerCase()}`],
+                aiRationale: `This mock idea targets a common search query for ${combinedConceptExample}. The '2024 Update' provides a fresh angle. Keywords focus on beginner intent for this tutorial type.`
             },
             {
-                text: `Mock Idea: Troubleshooting ${exampleApp} for ${exampleNiche} - Quick Fixes`,
-                keywords: [`${exampleApp} issues ${exampleNiche}`, `fix ${exampleApp} ${nicheName}`, `${exampleApp} troubleshooting`],
+                text: `Mock Idea: Troubleshooting ${exampleApp} during ${exampleTutorialType} - Quick Fixes for ${exampleNiche}`,
+                keywords: [`${exampleApp} issues ${exampleNiche}`, `fix ${exampleApp} ${nicheName}`, `${exampleApp} troubleshooting ${exampleTutorialType.toLowerCase()}`],
                 aiRationale: `Mock search indicates high interest in solving problems related to ${combinedConceptExample}. 'Quick Fixes' appeals to users looking for immediate solutions.`
             }
         ].map(idea => ({
-          text: sanitizeAIResponseText(idea.text)!, // Ensure mock data is also sanitized
+          text: sanitizeAIResponseText(idea.text)!, 
           keywords: idea.keywords.map(k => sanitizeAIResponseText(k)!),
           aiRationale: sanitizeAIResponseText(idea.aiRationale)!
         })),
         strategicGuidance: {
-            mainRecommendation: nicheName || appSoftware || userQuery ? 
-                sanitizeAIResponseText(`STRATEGY_GUIDANCE: Mock strategy for "${userQuery || nicheName || appSoftware}" - Focus on practical, step-by-step problem-solving content. (Mock insight: Search for '${userQuery || appSoftware || nicheName} help' increased 20% last quarter; top content is text-based, indicating video opportunity.)`) : 
-                sanitizeAIResponseText("STRATEGY_GUIDANCE: Mock search suggests focusing on tutorials within 'Core Finance & Wealth Management' like 'Online Banking App Tutorials' or 'Personal Investing Platform Tutorials', as these often have high RPMs and consistent demand. (Mock Insight: 'How to use [Popular Banking App]' searches remain stable; user need evergreen content). Ensure content is up-to-date for the current year."),
-            recommendedNiches: nicheName ? [] : ["AI Tools for Business", "Accounting & Bookkeeping Software Tutorials"],
-            recommendedApps: appSoftware ? [] : [{niche: "CRM Software", apps: ["Salesforce", "HubSpot CRM"]}],
-            recommendedVideoTypes: ["Step-by-step Guides", "Troubleshooting Tutorials"]
+            mainRecommendation: sanitizeAIResponseText(
+                `STRATEGY_GUIDANCE: Mock strategy for "${userQuery || tutorialType || appSoftware || nicheName}" - Focus on practical, step-by-step content for the '${tutorialType || 'selected type'}' tutorials. (Mock insight: Search for '${appSoftware || nicheName} ${tutorialType || 'help'}' increased; video opportunity strong.)`
+            )!,
+            recommendedNiches: nicheName ? [] : ["Artificial Intelligence & Machine Learning", "Cybersecurity & Data Protection"],
+            recommendedApps: appSoftware ? [] : [{niche: "CRM Platforms", apps: ["Salesforce", "HubSpot CRM"]}],
+            recommendedVideoTypes: tutorialType ? [tutorialType] : [TutorialType.PRACTICAL_USE_CASES, TutorialType.TROUBLESHOOTING_FIXES]
         }
     };
   }
@@ -158,78 +160,71 @@ export const generateIdeasWithGemini = async (
     throw new Error("Gemini AI SDK is not initialized. Check API_KEY configuration and application startup logs.");
   }
 
-  let highRpmNicheSummaryForPrompt = "Consider these general high-value, high-RPM niche categories and example topics if providing broad strategic guidance:\n";
-  highRpmNicheContext.slice(0, 5).forEach(category => {
+  let highRpmNicheSummaryForPrompt = "General High-Value Software/Platform Niches (for context if user input is very broad):\n";
+  highRpmNicheContext.slice(0, 5).forEach(category => { // Limit categories for brevity
     highRpmNicheSummaryForPrompt += `- Category: ${category.categoryName}\n`;
-    category.niches.slice(0, 2).forEach(nicheDetail => {
-        highRpmNicheSummaryForPrompt += `  - Example Niche Topic: ${nicheDetail.name} (e.g., for ${nicheDetail.examples.slice(0,2).join('/')})\n`;
+    category.niches.slice(0, 2).forEach(nicheDetail => { // Limit niches per category
+        highRpmNicheSummaryForPrompt += `  - Niche: ${nicheDetail.name} (e.g., ${nicheDetail.examples.slice(0,2).join(', ')}...)\n`;
     });
   });
 
-  const systemInstruction = `You are the ultimate YouTube Content Strategist and SEO Master. Your goal is to proactively identify HIGH-RPM, EVERGREEN, PERENNIAL video opportunities and generate specific, actionable video titles for a YouTube channel focused on how-to and tutorial content. You MUST use Google Search to inform ALL your suggestions.
+  const systemInstruction = `You are the ultimate YouTube Content Strategist and SEO Master for a channel focused on software, technology, and platform tutorials. Your goal is to generate specific, actionable video titles and supporting information, heavily informed by Google Search insights.
 
-**High-RPM Niche Context (For Your Awareness):**
+**High-Value Niche Context (For Your Awareness - use if user input is very broad):**
 ${highRpmNicheSummaryForPrompt}
-While aware of these high-RPM areas, your primary focus MUST be guided by the user's specific inputs. Use the high-RPM context mainly if the user's input is very broad or they ask for general strategy.
+Your primary focus MUST be guided by the user's specific inputs. Use the high-value niche context mainly if the user's input is very general or they ask for broad strategy.
 
-**User Input Interpretation (CRITICAL):**
-- If the user provides a "Refine AI Suggestion" (userQuery), THIS IS THEIR PRIMARY INTENT. Synthesize this with "Specific App/Software" and "Primary Focus Niche" to define the core topic.
-- If no userQuery, combine "Primary Focus Niche" (nicheName) and "Specific App/Software". If only one is provided, focus on that. 
-- If neither Niche nor App/Software nor userQuery is provided, provide broad strategic advice, potentially drawing from the high-RPM niche context.
-- The "Specific App/Software" can be a general tool (like an AI model 'Claude', 'ChatGPT') and the "Primary Focus Niche" or "userQuery" defines its application domain (e.g., 'Video Editing', 'Graphic Design').
+**User Input Interpretation (CRITICAL HIERARCHY):**
+1.  **Primary Focus Niche (nicheName):** The main subject area (e.g., "Artificial Intelligence & Machine Learning").
+2.  **Specific App/Software/Tool (appSoftware):** The specific tool or platform within the nicheName (e.g., "ChatGPT", "AWS S3"). This is a key focus if provided.
+3.  **Tutorial Type / Content Focus (tutorialType):** The style or angle of the tutorial (e.g., "Beginner Guide", "Advanced Techniques", "Troubleshooting").
+4.  **Refine AI Suggestion (userQuery):** The most granular level of detail from the user (e.g., "for marketing students", "common beginner mistakes", "integrating with Zapier"). This further specializes the (Niche + App + Tutorial Type) combination.
+
+Synthesize these inputs to define the core topic for video ideas. If 'appSoftware' is missing, ideas should be about the 'nicheName' in general, tailored by 'tutorialType' and 'userQuery'. If 'nicheName' is missing but 'appSoftware' is present, focus on the 'appSoftware', again tailored by 'tutorialType' and 'userQuery'. If all are present, create highly specific ideas.
 
 **Phase 1: Strategic Guidance (Always provide, even if brief)**
 Based on the interpreted core topic (derived from user inputs and validated with Google Search), provide a concise strategic recommendation. 
 Crucially, include 1-2 brief, specific examples of supporting data or search insights from Google Search that led to this recommendation.
-Identify high-potential niches, specific apps/software, and video types (e.g., 'beginner guides', 'troubleshooting') that exhibit high search volume potential, high RPMs, and truly evergreen demand, informed by Google Search. 
-Format as: "STRATEGY_GUIDANCE: [Your precise, actionable strategic advice. Example: 'Google Search confirms high interest in using Claude for automating video editing workflows (e.g., search volume for "Claude video subtitle generator" has tripled in 3 months; top content is outdated). Focus on step-by-step tutorials for specific tasks like auto-generating subtitles or rough cuts.']"
+Format as: "STRATEGY_GUIDANCE: [Your precise, actionable strategic advice. Example: 'Google Search shows rising interest in "ChatGPT for code documentation" (searches up 50% MoM), especially for Python. Current top videos are outdated. Focus on beginner-friendly, step-by-step guides for automatically generating Python docstrings using ChatGPT.']"
 
-**Phase 2: Specific Video Ideas with Optimal Keywords & Rationale (7-10 ideas)**
-For each video title (related to the core topic):
+**Phase 2: Specific Video Ideas with Optimal Keywords & Rationale (5-7 ideas)**
+For each video title (related to the core topic combination):
 - The title must be compelling, directly answer a user's search intent, and incorporate optimal keywords.
-- Identify 3-5 optimal, high-search-intent, high-RPM, evergreen keywords for that specific video, validated by Google Search.
-- Provide a brief rationale explaining how Google Search results indicate this topic aligns with common search queries or addresses a widespread user need for the core topic, and what makes this idea a good opportunity based on these search insights.
-- Ensure ideas align with high-RPM areas where possible, using Google Search to confirm current relevance.
+- Identify 3-5 optimal, high-search-intent keywords for that specific video, validated by Google Search.
+- Provide a brief rationale explaining how Google Search results indicate this topic aligns with common search queries or addresses a widespread user need for the core topic combination, and what makes this idea a good opportunity based on these search insights.
 
-Consider (and validate with Google Search for the core topic):
-- Emerging use cases for tools/platforms/apps that lack good tutorials.
-- New features/updates in popular software/platforms that generate new "how-to" queries.
-- Common user pain points, recurring questions, and troubleshooting scenarios.
+Consider (and validate with Google Search for the core topic combination):
+- Specific problems, errors, or advanced use cases for the 'appSoftware' within the 'nicheName' for the 'tutorialType'.
+- How the 'userQuery' (e.g., target audience, specific problem) can be addressed.
+- Emerging features or less-documented aspects of the 'appSoftware'.
 
 **Output Format (VERY STRICT):**
 1.  Always start with 'STRATEGY_GUIDANCE:' on its own line.
 2.  Immediately following, list each video idea on a new line.
 3.  After each video idea, on a new line, list its keywords: "KEYWORDS: keyword1, keyword2, keyword3".
 4.  After keywords, on a new line, provide rationale: "RATIONALE: Your rationale here."
-Do NOT use numbering or bullet points for ideas/keywords/rationales. Each part on its own line.
+Do NOT use numbering or bullet points for ideas/keywords/rationales. Each part on its own line. Ensure each idea generated is distinct and valuable.
 `;
 
-  let prompt = `Generate video ideas for YouTube, leveraging Google Search to focus on topics with high search demand and clear user needs. Prioritize the user's 'Refine AI Suggestion' if provided, to define the core topic.`;
-  const hasNiche = nicheName && nicheName.trim() && nicheName !== "Select a Niche (or AI will suggest)";
-  const hasApp = appSoftware && appSoftware.trim();
-  const hasUserQuery = userQuery && userQuery.trim();
+  let promptParts: string[] = [];
+  if (nicheName && nicheName.trim()) promptParts.push(`Niche: "${nicheName.trim()}"`);
+  if (appSoftware && appSoftware.trim()) promptParts.push(`App/Software: "${appSoftware.trim()}"`);
+  if (tutorialType && tutorialType.trim()) promptParts.push(`Tutorial Type: "${tutorialType.trim()}"`);
+  if (userQuery && userQuery.trim()) promptParts.push(`Refinement/Specifics: "${userQuery.trim()}"`);
 
-  let focusDescription = "Broad content strategy requested. Provide overarching STRATEGY_GUIDANCE based on Google Search for high-potential areas (referencing the provided high-RPM context if applicable), then generate specific video ideas for those general high-value areas.";
-
-  if (hasUserQuery) {
-    focusDescription = `User's primary focus (from 'Refine AI Suggestion'): "${userQuery.trim()}"`;
-    if (hasApp) focusDescription += `, potentially applied to App/Software: "${appSoftware.trim()}"`;
-    if (hasNiche) focusDescription += `, within the general context of Niche: "${nicheName.trim()}"`;
-  } else if (hasNiche && hasApp) {
-    focusDescription = `Primary focus: Niche "${nicheName.trim()}", App/Software "${appSoftware.trim()}".`;
-  } else if (hasNiche) {
-    focusDescription = `Primary focus: Niche "${nicheName.trim()}".`;
-  } else if (hasApp) { 
-    focusDescription = `Primary focus: App/Software "${appSoftware.trim()}".`;
+  let focusDescription = "Generate video ideas based on the following parameters, using Google Search to inform all suggestions. Focus on topics with high search demand and clear user needs. ";
+  if (promptParts.length > 0) {
+    focusDescription += `User's focus: ${promptParts.join(', ')}.`;
+  } else {
+    focusDescription += "User has not provided specific inputs; provide broad strategic advice based on high-value niches and then generate example video ideas for those general areas.";
   }
   
-  prompt += `\n${focusDescription}.`;
-  prompt += `\n\nAdhere strictly to the Output Format: STRATEGY_GUIDANCE, then Idea, then KEYWORDS, then RATIONALE, each on a new line.`;
+  const fullPrompt = `${focusDescription}\n\nAdhere strictly to the Output Format: STRATEGY_GUIDANCE, then Idea, then KEYWORDS, then RATIONALE, each on a new line.`;
 
   try {
     const response: GenerateContentResponse = await ai.models.generateContent({
         model: 'gemini-2.5-flash-preview-04-17',
-        contents: prompt,
+        contents: fullPrompt,
         config: {
             systemInstruction: systemInstruction,
             tools: [{ googleSearch: {} }], 

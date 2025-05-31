@@ -1,4 +1,4 @@
-import { IdeaStatus, IdeaPriority, NEW_HIGH_RPM_CATEGORIES, HighRpmNicheDetail } from './types';
+import { IdeaStatus, IdeaPriority, NEW_HIGH_RPM_CATEGORIES, HighRpmNicheDetail, TutorialType } from './types';
 
 export const STATUS_OPTIONS = Object.values(IdeaStatus).map(status => ({ value: status, label: status }));
 export const PRIORITY_OPTIONS = [
@@ -9,16 +9,15 @@ export const PRIORITY_OPTIONS = [
 
 // Generate NICHES_FOR_DROPDOWN from the new categorized structure
 // Each option will have a value (niche name) and a label (niche name).
-// We can also consider adding optgroups in the Select component later if needed.
 export const NICHES_FOR_DROPDOWN = NEW_HIGH_RPM_CATEGORIES.flatMap(category => 
   category.niches.map(niche => ({
     value: niche.name,
-    label: niche.name, // For now, label is same as name. Can be category.categoryName + " - " + niche.name if too many duplicates
-    group: category.categoryName // For potential optgroup usage
+    label: niche.name,
+    group: category.categoryName 
   }))
 ).sort((a, b) => a.label.localeCompare(b.label)); // Sort alphabetically by label
 
-// Helper function to get niche details by its name
+// Helper function to get niche details (including examples) by its name
 export const getNicheDetailsByName = (nicheName: string): HighRpmNicheDetail | undefined => {
   for (const category of NEW_HIGH_RPM_CATEGORIES) {
     const foundNiche = category.niches.find(niche => niche.name === nicheName);
@@ -28,6 +27,12 @@ export const getNicheDetailsByName = (nicheName: string): HighRpmNicheDetail | u
   }
   return undefined;
 };
+
+export const TUTORIAL_TYPE_OPTIONS = Object.values(TutorialType).map(type => ({
+  value: type,
+  label: type,
+})).sort((a,b) => a.label.localeCompare(b.label));
+
 
 export const STATUS_COLORS: Record<IdeaStatus, string> = {
   [IdeaStatus.NEW]: 'cyan-400',
