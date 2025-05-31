@@ -331,12 +331,14 @@ And there you have it! That's how you can easily ${ideaTitle.toLowerCase()}. If 
   }
 
   const systemInstruction = `You are an expert YouTube scriptwriter specializing in clear, actionable OBS Studio style tutorial scripts. Maintain a direct, instructional, and enthusiastic tone. Get straight to the point.
-**CRITICAL SCRIPT FORMATTING RULES FOR PART 1 (Video Script):**
-1.  **Clean Script Only:** The script body must contain ONLY the words to be spoken. ABSOLUTELY NO instructional text, director's notes, or explanations in brackets (e.g., "[Show screen]", "[Emphasize this point]", "[Sound effect]").
-2.  **Plain Text Section Titles:** Script sections must be introduced by their title on a new line (e.g., "Introduction and Hook"). NO Markdown symbols (like '##') or any other special characters should precede these titles.
-3.  **Substantial Sections:** Sections should represent logical shifts or major steps in the tutorial. Aim for sections that are roughly 30 seconds to 1.5 minutes of spoken content for a 5-minute video, not just single short paragraphs. Ensure natural flow. These titles are for YouTube chapters and script organization.
 
-All non-spoken instructions (camera work, on-screen text, tone, delivery advice) MUST be in "Part 2: Video Production Instructions".`;
+**CRITICAL SCRIPT FORMATTING RULES FOR PART 1 (Video Script):**
+1.  **Clean Script Only:** The script body in Part 1 must contain ONLY the words to be spoken. ABSOLUTELY NO instructional text, director's notes, or explanations in brackets (e.g., "[Show screen]", "[Emphasize this point]", "[Sound effect]").
+2.  **Plain Text Section Titles:** Script sections within Part 1 must be introduced by their title on a new line (e.g., "Introduction and Hook"). NO Markdown symbols (like '##') or any other special characters should precede these titles. The titles themselves should be plain text.
+3.  **Substantial Sections:** Sections should represent logical shifts or major steps in the tutorial. Aim for sections that are roughly 30 seconds to 1.5 minutes of spoken content each, not just single short paragraphs. Ensure natural flow. These titles are for YouTube chapters and script organization.
+
+All non-spoken instructions (camera work, on-screen text, tone, delivery advice) MUST be in "Part 2: Video Production Instructions".
+The three main part headers (Part 1, Part 2, Part 3) are essential for parsing and MUST be exactly as specified.`;
 
   let prompt = `
 Video Title/Idea: "${ideaTitle}"
@@ -346,10 +348,10 @@ Target Video Length: Approximately ${targetLengthMinutes} minutes.
 ${existingKeywords && existingKeywords.length > 0 ? `Relevant Keywords to Incorporate (subtly in script): ${existingKeywords.join(', ')}\n` : ''}
 ${competitorInsights ? `CRITICAL Competitor Insights & Strategic Angle (MUST HEAVILY INFLUENCE SCRIPT TO BE UNIQUE AND SUPERIOR): ${competitorInsights}\n` : "No specific competitor data provided; focus on creating a strong foundational script based on the title and niche, ensuring clarity and value.\n"}
 
-**Mandatory Output Structure & Content (Strictly Follow):**
+**Mandatory Output Structure & Content (Strictly Follow - All three parts are required):**
 
 **Part 1: Video Script**
-(This part contains ONLY the spoken script. Section titles are plain text on their own line.)
+(This part contains ONLY the spoken script. Section titles are plain text on their own line. No bracketed instructions. No markdown for titles.)
 
 Introduction and Hook
 (Script for intro and hook. Approx 10-15% of total time. Start IMMEDIATELY: "In today's video, I'm going to teach/show you how to [Core Task from Video Title]." Briefly (1-2 sentences) explain the value/benefit, hinting at the unique angle from Competitor Insights.)
@@ -370,13 +372,14 @@ Conclusion and Call to Action
 (All non-spoken instructions go here. Practical tips for OBS screen recording for THIS SPECIFIC SCRIPT, emphasizing visual support for each segment and the unique angle: e.g., "Clearly show how this approach differs from what competitor X does.", "Use on-screen text to highlight key differentiators or benefits derived from the strategic angle.")
 
 **Part 3: Suggested Script Resources**
-(If Google Search identifies relevant documentation, tools, or assets, list their URIs here. If not, state "No specific external resources identified by search for this topic.")
+(If Google Search identifies relevant documentation, tools, or assets, list their URIs here. If not, state "No specific external resources identified by search for this topic." This part must always be included.)
 
-**CRITICAL REMINDERS:**
+**CRITICAL REMINDERS - Format Adherence is Key for Application Parsing:**
 *   **Part 1: Video Script MUST BE CLEAN** - Only spoken words. No bracketed instructions. Plain text section titles.
 *   Pace the script for the **Target Video Length**. Sections must be substantial and logical.
 *   Use Google Search to inform content and validate the strategic angle.
 *   The competitor insights MUST be used to make the script unique and valuable.
+*   The three main part headers (**Part 1: Video Script**, **Part 2: Video Production Instructions**, **Part 3: Suggested Script Resources**) must be present and formatted exactly as shown, with bolding and colons.
 `;
 
   try {
