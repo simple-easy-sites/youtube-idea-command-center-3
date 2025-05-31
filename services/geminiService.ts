@@ -283,53 +283,44 @@ export const generateVideoScriptAndInstructions = async (
     console.warn("Gemini (generateVideoScriptAndInstructions): Using mock data due to API key issue.");
     await new Promise(resolve => setTimeout(resolve, 800));
     const mockCompetitorInsight = competitorInsights || "Mock: No specific competitor insights provided, focus on generic good practices.";
-    const mockScript = `
-**Part 1: Video Script**
-## Introduction and Hook
-**(Intro - approx. 30 seconds)**
+    const mockScriptBody = `
+Introduction and Hook
 In today's video, I'm going to teach you how to ${ideaTitle.toLowerCase()} using ${appSoftware || 'the best tools'} for the ${niche} niche! This is super useful for [mention a common benefit, informed by: ${mockCompetitorInsight.substring(0, 50)}...]. Let's dive in!
 
-## Setting Up Your Workspace
-**(Main Content - Setup - approx. 1 minute)**
-First, you'll need to [mock step 1 action, e.g., open ${appSoftware || 'the application'}]. Make sure you [mention a key detail for step 1]. 
-Then, [mock step 1b action, e.g., ensure your project settings are correct]. This is crucial for good results.
+Setting Up Your Workspace
+First, you'll need to open ${appSoftware || 'the application'}. Make sure you check the project settings are correct. This is crucial for good results. 
+Then, ensure your project settings are correct.
 
-## Executing the Core Task
-**(Main Content - Core Task - approx. 2 minutes for a 5 min video)**
-Next, [mock step 2 action, e.g., navigate to the 'Settings' menu]. You'll see an option for [mention a UI element].
-Follow this by [mock step 2b action, e.g., selecting the 'Advanced' tab].
-Now, perform the main action: [mock step 2c action, e.g., click 'Process Data']. This might take a moment.
-
-**(Mid-roll engage - if targetLengthMinutes > 3)**
+Executing the Core Task
+Next, navigate to the 'Settings' menu. You'll see an option for a specific UI element.
+Follow this by selecting the 'Advanced' tab.
+Now, perform the main action: click 'Process Data'. This might take a moment.
 Quick pause! If you're finding this tutorial helpful, hit that like button and subscribe for more content like this. It really helps the channel!
 
-## Reviewing and Refining
-**(Main Content - Refinement - approx. 1 minute)**
-Once that's done, [mock step 3 action, e.g., check the output]. You should see [expected result].
-If not, [mock troubleshooting tip, e.g., double-check your input from Step 1].
+Reviewing and Refining
+Once that's done, check the output. You should see the expected result.
+If not, double-check your input from Step 1.
 
-## Conclusion
-**(Conclusion - approx. 30 seconds)**
+Conclusion
 And there you have it! That's how you can easily ${ideaTitle.toLowerCase()}. If you have questions, drop them in the comments. Thanks for watching, and I'll see you next time!
-
-**Part 2: Video Production Instructions**
-
+`;
+    const mockProductionInstructions = `
 - For OBS: Use a clean desktop background. Ensure ${appSoftware || 'the application'} window is clearly visible.
 - Zoom in on important UI elements or menu clicks for each major step.
 - Use on-screen text annotations for key commands, shortcuts, or to emphasize unique points from competitor insights.
 - Maintain an enthusiastic but clear vocal pace. Sections should feel distinct but flow well.
 - Edit out long pauses or mistakes.
 - Ensure each section (e.g., "Setting Up Your Workspace", "Executing the Core Task") is visually distinct if possible.
-
-**Part 3: Suggested Script Resources**
-
+`;
+    const mockResources = `
 - https://mockresource.com/docs/${appSoftware ? appSoftware.toLowerCase().replace(/\s/g, '-') : 'general-topic'}
 - https://anothermock.com/tutorials/${niche.toLowerCase().replace(/\s/g, '-')}-guide
 `;
+
     return {
-        script: sanitizeAIResponseText(mockScript.match(/\*\*Part 1: Video Script\*\*\s*([\s\S]*?)(?=\*\*Part 2: Video Production Instructions\*\*|$)/i)?.[1]?.trim() || "Mock script error")!,
-        videoInstructions: sanitizeAIResponseText(mockScript.match(/\*\*Part 2: Video Production Instructions\*\*\s*([\s\S]*?)(?=\*\*Part 3: Suggested Script Resources\*\*|$)/i)?.[1]?.trim() || "Mock instructions error")!,
-        suggestedResources: (mockScript.match(/\*\*Part 3: Suggested Script Resources\*\*\s*([\s\S]*)/i)?.[1]?.trim()?.split('\n').map(r => r.replace(/^- /, '').trim()).filter(r => r.startsWith("http")) || ["https://mockresource.com/error"])
+        script: sanitizeAIResponseText(mockScriptBody)!,
+        videoInstructions: sanitizeAIResponseText(mockProductionInstructions)!,
+        suggestedResources: (mockResources.split('\n').map(r => r.replace(/^- /, '').trim()).filter(r => r.startsWith("http")) || ["https://mockresource.com/error"])
                             .map(r => sanitizeAIResponseText(r)!)
     };
   }
@@ -340,61 +331,52 @@ And there you have it! That's how you can easily ${ideaTitle.toLowerCase()}. If 
   }
 
   const systemInstruction = `You are an expert YouTube scriptwriter specializing in clear, actionable OBS Studio style tutorial scripts. Maintain a direct, instructional, and enthusiastic tone. Get straight to the point.
-CRITICAL: Structure the script into logical "chapters" or "segments" using Markdown H2 headers (e.g., "## Section Title"). These sections should represent significant shifts or steps and be substantial in length (e.g., for a 5-minute video, aim for sections that are roughly 30 seconds to 1.5 minutes of spoken content, not just single short paragraphs). Ensure natural flow. These headers are for script structure and YouTube chapters.`;
+**CRITICAL SCRIPT FORMATTING RULES FOR PART 1 (Video Script):**
+1.  **Clean Script Only:** The script body must contain ONLY the words to be spoken. ABSOLUTELY NO instructional text, director's notes, or explanations in brackets (e.g., "[Show screen]", "[Emphasize this point]", "[Sound effect]").
+2.  **Plain Text Section Titles:** Script sections must be introduced by their title on a new line (e.g., "Introduction and Hook"). NO Markdown symbols (like '##') or any other special characters should precede these titles.
+3.  **Substantial Sections:** Sections should represent logical shifts or major steps in the tutorial. Aim for sections that are roughly 30 seconds to 1.5 minutes of spoken content for a 5-minute video, not just single short paragraphs. Ensure natural flow. These titles are for YouTube chapters and script organization.
+
+All non-spoken instructions (camera work, on-screen text, tone, delivery advice) MUST be in "Part 2: Video Production Instructions".`;
 
   let prompt = `
 Video Title/Idea: "${ideaTitle}"
 Niche: "${niche}"
 App/Software Focus: ${appSoftware ? `"${appSoftware}"` : "Not specified, focus on general niche topic"}
 Target Video Length: Approximately ${targetLengthMinutes} minutes.
-${existingKeywords && existingKeywords.length > 0 ? `Relevant Keywords to Incorporate: ${existingKeywords.join(', ')}\n` : ''}
+${existingKeywords && existingKeywords.length > 0 ? `Relevant Keywords to Incorporate (subtly in script): ${existingKeywords.join(', ')}\n` : ''}
 ${competitorInsights ? `CRITICAL Competitor Insights & Strategic Angle (MUST HEAVILY INFLUENCE SCRIPT TO BE UNIQUE AND SUPERIOR): ${competitorInsights}\n` : "No specific competitor data provided; focus on creating a strong foundational script based on the title and niche, ensuring clarity and value.\n"}
 
-**Mandatory Script Structure & Content:**
-1.  **Introduction and Hook (First segment, approx 10-15% of script time):**
-    *   Start IMMEDIATELY: "In today's video, I'm going to teach/show you how to [Core Task from Video Title]."
-    *   Briefly (1-2 sentences) explain the value/benefit, hinting at the unique angle from Competitor Insights.
-2.  **Main Content (Comprising several logically sequenced segments):**
-    *   Break down the process into clear, substantial steps. Each major step or phase should be its own segment, introduced with a Markdown H2 header (e.g., "## Setting Up The Environment").
-    *   For each step/segment: Clearly state the actions. Provide brief context.
-    *   **Crucially, ensure the content directly addresses any gaps or opportunities identified in the Competitor Insights.**
-    *   **Mid-Roll Engagement Prompt (If script is for >3 minutes):** Insert a brief prompt within a relevant main content segment.
-3.  **Tips/Troubleshooting (Optional, can be one or more distinct segments):** Briefly mention 1-2 common pitfalls or useful tips, especially if Competitor Insights suggest this is a weak area. Use Markdown H2 headers if these are substantial.
-4.  **Conclusion & Call to Action (Final segment, approx 10-15% of script time):**
-    *   Quick recap.
-    *   Encourage engagement.
-    *   Sign off.
+**Mandatory Output Structure & Content (Strictly Follow):**
 
-**Output Requirements (Strictly Follow):**
-*   Pace the script to fit the **Target Video Length**, ensuring segments are appropriately long and not overly granular. A 5-minute video might have 3-5 major segments, each potentially containing multiple paragraphs. Avoid making every single paragraph a new H2 section. Sections should be meaningful divisions of content.
-*   Write as if spoken directly to the camera for an OBS Studio style screen recording.
-*   Use Google Search to inform content, especially for specific examples related to the app/software or niche, and to validate the strategic angle.
-*   Output three distinct parts, CLEARLY LABELED as follows:
-    \`\`\`
-    **Part 1: Video Script**
-    ## Introduction and Hook
-    [Your intro script here, leveraging competitor insights for the hook. This should be a substantial paragraph or two.]
+**Part 1: Video Script**
+(This part contains ONLY the spoken script. Section titles are plain text on their own line.)
 
-    ## [Example: Setting Up The Environment]
-    [Script content for this segment. This could be multiple paragraphs detailing setup steps.]
+Introduction and Hook
+(Script for intro and hook. Approx 10-15% of total time. Start IMMEDIATELY: "In today's video, I'm going to teach/show you how to [Core Task from Video Title]." Briefly (1-2 sentences) explain the value/benefit, hinting at the unique angle from Competitor Insights.)
 
-    ## [Example: Core Task Step-by-Step]
-    [Script content for core task, potentially broken into further sub-segments if logical for longer videos and the overall target length allows. Each sub-segment would also use H2.]
+[Example Section Title for Setup]
+(Script content for this segment. This could be multiple paragraphs detailing setup steps. Clearly state actions, provide brief context. Ensure content directly addresses gaps/opportunities from Competitor Insights.)
 
-    ## [Example: Advanced Tip or Common Pitfall]
-    [Script content for tips/troubleshooting, informed by competitor insights.]
+[Example Section Title for Core Task]
+(Script content for core task. Break down the process into clear, substantial steps. Each major step or phase should be its own segment, introduced with a plain text title. If script is for >3 minutes, include a mid-roll engagement prompt like "Quick pause! If you're finding this helpful, hit like and subscribe..." within a relevant segment.)
 
-    ## Conclusion and Call to Action
-    [Your conclusion script here.]
+[Example Section Title for Tips/Troubleshooting]
+(Optional segment. Briefly mention 1-2 common pitfalls or useful tips, especially if Competitor Insights suggest this is a weak area.)
 
-    **Part 2: Video Production Instructions**
-    [Practical tips for OBS screen recording for THIS SPECIFIC SCRIPT, emphasizing visual support for each segment and the unique angle: e.g., "Clearly show how this approach differs from what competitor X does.", "Use on-screen text to highlight key differentiators or benefits derived from the strategic angle."]
+Conclusion and Call to Action
+(Script for conclusion. Approx 10-15% of total time. Quick recap. Encourage engagement. Sign off.)
 
-    **Part 3: Suggested Script Resources**
-    [If Google Search identifies relevant documentation, tools, or assets, list their URIs here. If not, state "No specific external resources identified by search for this topic."]
-    \`\`\`
+**Part 2: Video Production Instructions**
+(All non-spoken instructions go here. Practical tips for OBS screen recording for THIS SPECIFIC SCRIPT, emphasizing visual support for each segment and the unique angle: e.g., "Clearly show how this approach differs from what competitor X does.", "Use on-screen text to highlight key differentiators or benefits derived from the strategic angle.")
 
-**CRITICAL: Adhere to the style and directness. The script MUST be clearly sectioned using Markdown H2 headers (## Section Title). These sections must be substantial and represent logical parts of the tutorial, not just every paragraph. The competitor insights MUST be used to make the script unique and valuable.**
+**Part 3: Suggested Script Resources**
+(If Google Search identifies relevant documentation, tools, or assets, list their URIs here. If not, state "No specific external resources identified by search for this topic.")
+
+**CRITICAL REMINDERS:**
+*   **Part 1: Video Script MUST BE CLEAN** - Only spoken words. No bracketed instructions. Plain text section titles.
+*   Pace the script for the **Target Video Length**. Sections must be substantial and logical.
+*   Use Google Search to inform content and validate the strategic angle.
+*   The competitor insights MUST be used to make the script unique and valuable.
 `;
 
   try {
