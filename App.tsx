@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { IdeaStatus, VideoIdea, CategorizedIdeas, FlashMessage, IdeaPriority, AIStrategicGuidance, GroundingChunk, TitleSuggestion, UntappedScore, YouTubeVideoResult, USER_DEFINED_NICHES } from './types';
 import { Header } from './components/Header';
@@ -8,7 +9,7 @@ import { FlashMessageDisplay } from './components/FlashMessageDisplay';
 import { generateIdeasWithGemini, expandIdeaIntoRelatedIdeas, generateKeywordsWithGemini, generateTitleSuggestionsWithGemini, analyzeYouTubeCompetitorsForAngles, generateVideoScriptAndInstructions } from './services/geminiService';
 import { getAllIdeas, saveAllIdeas, getLastActiveProfile, saveLastActiveProfile, getAllProfiles, saveAllProfiles } from './services/localStorageService';
 import { LoadingSpinner } from './components/ui/LoadingSpinner';
-import { ScriptViewerModal } from './components/ScriptViewerModal'; // Re-added
+import { ScriptViewerModal } from './components/ScriptViewerModal'; // Restored ScriptViewerModal
 import { YouTubeViewerModal } from './components/YouTubeViewerModal';
 import { TitleOptimizerModal } from './components/TitleOptimizerModal';
 import { searchYouTubeForExistingVideos } from './services/youtubeService';
@@ -31,8 +32,9 @@ const App: React.FC = () => {
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [flashMessages, setFlashMessages] = useState<FlashMessage[]>([]);
   
-  const [selectedIdeaForScript, setSelectedIdeaForScript] = useState<VideoIdea | null>(null); // Re-added
-  const [showScriptModal, setShowScriptModal] = useState<boolean>(false); // Re-added
+  // Script modal state restored
+  const [selectedIdeaForScript, setSelectedIdeaForScript] = useState<VideoIdea | null>(null); 
+  const [showScriptModal, setShowScriptModal] = useState<boolean>(false); 
   
   const [selectedIdeaForYouTube, setSelectedIdeaForYouTube] = useState<VideoIdea | null>(null);
   const [showYouTubeModal, setShowYouTubeModal] = useState<boolean>(false);
@@ -525,14 +527,15 @@ const App: React.FC = () => {
     }
   };
   
+  // Restored handleGenerateScriptAndInstructions
   const handleGenerateScriptAndInstructions = async (ideaId: string, targetLengthMinutes: number) => {
     const targetIdea = ideas.find(idea => idea.id === ideaId);
     if (!targetIdea) {
       addFlashMessage('error', 'Could not find the idea to generate script for.');
       return;
     }
-    handleUpdateIdea(ideaId, { isScriptLoading: true, scriptLengthMinutes: targetLengthMinutes, script: "Generating...", videoInstructions: "Generating...", suggestedResources: [] });
-    setSelectedIdeaForScript({...targetIdea, isScriptLoading: true, scriptLengthMinutes: targetLengthMinutes, script: "Generating..."}); // Open modal immediately with loading state
+    handleUpdateIdea(ideaId, { isScriptLoading: true });
+    setSelectedIdeaForScript({...targetIdea, isScriptLoading: true, scriptLengthMinutes: targetLengthMinutes});
     setShowScriptModal(true);
 
     try {
@@ -547,27 +550,30 @@ const App: React.FC = () => {
       const updatedIdeaWithScript: Partial<VideoIdea> = { 
         script, 
         videoInstructions, 
-        suggestedResources,
+        suggestedResources, 
         scriptLengthMinutes: targetLengthMinutes,
-        isScriptLoading: false 
+        isScriptLoading: false,
       };
       handleUpdateIdea(ideaId, updatedIdeaWithScript);
-      const currentIdeaForModal = ideas.find(i => i.id === ideaId); // Get the absolute latest version
-        if (currentIdeaForModal) {
-            setSelectedIdeaForScript({ ...currentIdeaForModal, ...updatedIdeaWithScript, isScriptLoading: false });
-        }
-
-
-      addFlashMessage('success', `Script generated for "${targetIdea.text.substring(0,30)}...".`);
+      const currentIdeaForModal = ideas.find(i => i.id === ideaId);
+      if(currentIdeaForModal) {
+        setSelectedIdeaForScript({...currentIdeaForModal, ...updatedIdeaWithScript, isScriptLoading: false});
+      }
+      if (script && !script.toLowerCase().includes("error") && !script.toLowerCase().includes("failed to generate")) {
+        addFlashMessage('success', `Script and instructions generated for "${targetIdea.text.substring(0,30)}...".`);
+      } else {
+        addFlashMessage('error', `AI could not generate script content for "${targetIdea.text.substring(0,30)}..." or returned an error. Check modal for details.`);
+      }
     } catch (error) {
       console.error("Error generating script:", error);
-      addFlashMessage('error', `Failed to generate script: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      addFlashMessage('error', `Failed to generate script: ${errorMessage}`);
       const currentIdeaState = ideas.find(i => i.id === ideaId);
-      const errorUpdate: Partial<VideoIdea> = { 
-          isScriptLoading: false, 
-          script: "Error during script generation. Please try again.",
-          videoInstructions: "Could not generate instructions.",
-          suggestedResources: []
+      const errorUpdate: Partial<VideoIdea> = {
+        isScriptLoading: false, 
+        script: `Error generating script: ${errorMessage}`, 
+        videoInstructions: 'Could not be generated due to error.',
+        scriptLengthMinutes: targetLengthMinutes,
       };
       setSelectedIdeaForScript(currentIdeaState ? {...currentIdeaState, ...errorUpdate} : null);
       handleUpdateIdea(ideaId, errorUpdate);
@@ -680,8 +686,8 @@ const App: React.FC = () => {
                           onExpandIdea={handleExpandIdea}
                           onShowYouTubeValidation={handleShowYouTubeValidation}
                           onGenerateTitleSuggestions={handleGenerateTitleSuggestions}
-                          onGenerateScriptAndInstructions={handleGenerateScriptAndInstructions} // Added
-                          onShowScriptModal={(idea) => { setSelectedIdeaForScript(idea); setShowScriptModal(true);}} // Added
+                          onGenerateScriptAndInstructions={handleGenerateScriptAndInstructions} // Prop restored
+                          onShowScriptModal={(idea) => { setSelectedIdeaForScript(idea); setShowScriptModal(true);}} // Prop restored
                         />
                       );
                     })}
@@ -691,7 +697,8 @@ const App: React.FC = () => {
         )}
       </main>
 
-      {selectedIdeaForScript && ( // Re-added
+      {/* ScriptViewerModal and related state restored */}
+      {selectedIdeaForScript && (
         <ScriptViewerModal
           isOpen={showScriptModal}
           onClose={() => { setShowScriptModal(false); setSelectedIdeaForScript(null);}}

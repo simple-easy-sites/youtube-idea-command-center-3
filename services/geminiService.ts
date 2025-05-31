@@ -333,12 +333,14 @@ And there you have it! That's how you can easily ${ideaTitle.toLowerCase()}. If 
   const systemInstruction = `You are an expert YouTube scriptwriter specializing in clear, actionable OBS Studio style tutorial scripts. Maintain a direct, instructional, and enthusiastic tone. Get straight to the point.
 
 **CRITICAL SCRIPT FORMATTING RULES FOR PART 1 (Video Script):**
-1.  **Clean Script Only:** The script body in Part 1 must contain ONLY the words to be spoken. ABSOLUTELY NO instructional text, director's notes, or explanations in brackets (e.g., "[Show screen]", "[Emphasize this point]", "[Sound effect]").
-2.  **Plain Text Section Titles:** Script sections within Part 1 must be introduced by their title on a new line (e.g., "Introduction and Hook"). NO Markdown symbols (like '##') or any other special characters should precede these titles. The titles themselves should be plain text.
+1.  **Clean Script Only:** The script body in Part 1 must contain ONLY the words to be spoken. ABSOLUTELY NO instructional text, director's notes, explanations in brackets (e.g., "[Show screen]", "[Emphasize this point]", "[Sound effect]"), or Markdown symbols (like '##') for section titles.
+2.  **Plain Text Section Titles:** Script sections within Part 1 must be introduced by their title on a new line (e.g., "Introduction and Hook"). The titles themselves should be plain text, with NO Markdown or other special characters.
 3.  **Substantial Sections:** Sections should represent logical shifts or major steps in the tutorial. Aim for sections that are roughly 30 seconds to 1.5 minutes of spoken content each, not just single short paragraphs. Ensure natural flow. These titles are for YouTube chapters and script organization.
 
 All non-spoken instructions (camera work, on-screen text, tone, delivery advice) MUST be in "Part 2: Video Production Instructions".
-The three main part headers (Part 1, Part 2, Part 3) are essential for parsing and MUST be exactly as specified.`;
+The three main part headers (**Part 1: Video Script**, **Part 2: Video Production Instructions**, **Part 3: Suggested Script Resources**) are ESSENTIAL for parsing and MUST be exactly as specified, including the bolding and colons.
+Do not add any text before "**Part 1: Video Script**" or after "**Part 3: Suggested Script Resources**" (unless it's part of the content for Part 3).
+`;
 
   let prompt = `
 Video Title/Idea: "${ideaTitle}"
@@ -348,7 +350,7 @@ Target Video Length: Approximately ${targetLengthMinutes} minutes.
 ${existingKeywords && existingKeywords.length > 0 ? `Relevant Keywords to Incorporate (subtly in script): ${existingKeywords.join(', ')}\n` : ''}
 ${competitorInsights ? `CRITICAL Competitor Insights & Strategic Angle (MUST HEAVILY INFLUENCE SCRIPT TO BE UNIQUE AND SUPERIOR): ${competitorInsights}\n` : "No specific competitor data provided; focus on creating a strong foundational script based on the title and niche, ensuring clarity and value.\n"}
 
-**Mandatory Output Structure & Content (Strictly Follow - All three parts are required):**
+**Mandatory Output Structure & Content (Strictly Follow - All three parts are required and must be in this order):**
 
 **Part 1: Video Script**
 (This part contains ONLY the spoken script. Section titles are plain text on their own line. No bracketed instructions. No markdown for titles.)
@@ -356,30 +358,30 @@ ${competitorInsights ? `CRITICAL Competitor Insights & Strategic Angle (MUST HEA
 Introduction and Hook
 (Script for intro and hook. Approx 10-15% of total time. Start IMMEDIATELY: "In today's video, I'm going to teach/show you how to [Core Task from Video Title]." Briefly (1-2 sentences) explain the value/benefit, hinting at the unique angle from Competitor Insights.)
 
-[Example Section Title for Setup]
-(Script content for this segment. This could be multiple paragraphs detailing setup steps. Clearly state actions, provide brief context. Ensure content directly addresses gaps/opportunities from Competitor Insights.)
+Main Section 1 Title (e.g., Setting Up Your Workspace)
+(Script content for this segment. This could be multiple paragraphs detailing setup steps. Clearly state actions, provide brief context. Ensure content directly addresses gaps/opportunities from Competitor Insights. Ensure each section is substantial.)
 
-[Example Section Title for Core Task]
-(Script content for core task. Break down the process into clear, substantial steps. Each major step or phase should be its own segment, introduced with a plain text title. If script is for >3 minutes, include a mid-roll engagement prompt like "Quick pause! If you're finding this helpful, hit like and subscribe..." within a relevant segment.)
+Main Section 2 Title (e.g., Executing the Core Task)
+(Script content for core task. Break down the process into clear, substantial steps. Each major step or phase should be its own segment, introduced with a plain text title. If script is for >3 minutes, include a mid-roll engagement prompt like "Quick pause! If you're finding this helpful, hit that like button and subscribe..." within a relevant segment.)
 
-[Example Section Title for Tips/Troubleshooting]
-(Optional segment. Briefly mention 1-2 common pitfalls or useful tips, especially if Competitor Insights suggest this is a weak area.)
+Main Section 3 Title (e.g., Reviewing Results or Advanced Tips)
+(Optional segment, or another core step. Briefly mention 1-2 common pitfalls or useful tips, especially if Competitor Insights suggest this is a weak area. Ensure this section is also substantial if included.)
 
 Conclusion and Call to Action
 (Script for conclusion. Approx 10-15% of total time. Quick recap. Encourage engagement. Sign off.)
 
 **Part 2: Video Production Instructions**
-(All non-spoken instructions go here. Practical tips for OBS screen recording for THIS SPECIFIC SCRIPT, emphasizing visual support for each segment and the unique angle: e.g., "Clearly show how this approach differs from what competitor X does.", "Use on-screen text to highlight key differentiators or benefits derived from the strategic angle.")
+(All non-spoken instructions go here. Provide specific, actionable OBS screen recording advice for THIS SCRIPT: e.g., "For 'Main Section 1 Title', zoom in on the [specific UI element]. Use on-screen text to highlight the keyboard shortcut [X] when mentioning it." "When discussing the competitor insight about [Y], show a quick side-by-side comparison or use a callout box." Emphasize visual support for each segment and the unique angle from competitor insights. Be very practical.)
 
 **Part 3: Suggested Script Resources**
-(If Google Search identifies relevant documentation, tools, or assets, list their URIs here. If not, state "No specific external resources identified by search for this topic." This part must always be included.)
+(If Google Search identifies relevant documentation, tools, or assets, list their URIs here, one per line. If not, state "No specific external resources identified by search for this topic." This part must always be included.)
 
 **CRITICAL REMINDERS - Format Adherence is Key for Application Parsing:**
-*   **Part 1: Video Script MUST BE CLEAN** - Only spoken words. No bracketed instructions. Plain text section titles.
+*   **Part 1: Video Script MUST BE CLEAN** - Only spoken words. No bracketed instructions. Plain text section titles on their own line.
 *   Pace the script for the **Target Video Length**. Sections must be substantial and logical.
 *   Use Google Search to inform content and validate the strategic angle.
 *   The competitor insights MUST be used to make the script unique and valuable.
-*   The three main part headers (**Part 1: Video Script**, **Part 2: Video Production Instructions**, **Part 3: Suggested Script Resources**) must be present and formatted exactly as shown, with bolding and colons.
+*   The three main part headers (**Part 1: Video Script**, **Part 2: Video Production Instructions**, **Part 3: Suggested Script Resources**) must be present, in order, and formatted exactly as shown with bolding and colons.
 `;
 
   try {
@@ -402,8 +404,9 @@ Conclusion and Call to Action
       return { script: "Error: Empty response from AI.", videoInstructions: "", suggestedResources: [] };
     }
     
-    const scriptMatch = rawFullText.match(/\*\*Part 1: Video Script\*\*\s*([\s\S]*?)(?=\*\*Part 2: Video Production Instructions\*\*|$)/i);
-    const instructionsMatch = rawFullText.match(/\*\*Part 2: Video Production Instructions\*\*\s*([\s\S]*?)(?=\*\*Part 3: Suggested Script Resources\*\*|$)/i);
+    // Refined Regex for better parsing
+    const scriptMatch = rawFullText.match(/\*\*Part 1: Video Script\*\*\s*([\s\S]*?)(?=\s*\*\*Part 2: Video Production Instructions\*\*|$)/i);
+    const instructionsMatch = rawFullText.match(/\*\*Part 2: Video Production Instructions\*\*\s*([\s\S]*?)(?=\s*\*\*Part 3: Suggested Script Resources\*\*|$)/i);
     const resourcesMatch = rawFullText.match(/\*\*Part 3: Suggested Script Resources\*\*\s*([\s\S]*)/i);
 
     const scriptContent = scriptMatch?.[1]?.trim() ?? "AI failed to generate script content in the expected format.";
@@ -417,10 +420,13 @@ Conclusion and Call to Action
             .filter(line => line.startsWith("http://") || line.startsWith("https://"));
     }
 
+    // Final check to ensure script is not the error message itself before returning
+    const finalScript = scriptContent.includes("AI failed to generate script content") ? scriptContent : sanitizeAIResponseText(scriptContent);
+    const finalInstructions = instructionsContent.includes("AI failed to generate production instructions") ? instructionsContent : sanitizeAIResponseText(instructionsContent);
 
     return {
-      script: sanitizeAIResponseText(scriptContent), 
-      videoInstructions: sanitizeAIResponseText(instructionsContent),
+      script: finalScript, 
+      videoInstructions: finalInstructions,
       suggestedResources: suggestedResourceList.map(r => sanitizeAIResponseText(r)),
     };
 

@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 import { VideoIdea, IdeaStatus } from '../types';
 import { IdeaCard } from './IdeaCard';
@@ -14,8 +15,9 @@ interface IdeaSectionProps {
   onExpandIdea: (ideaId: string) => Promise<void>;
   onShowYouTubeValidation: (ideaId: string, forceRefresh?: boolean) => void; // Updated signature
   onGenerateTitleSuggestions: (ideaId: string) => Promise<void>; 
-  onGenerateScriptAndInstructions: (ideaId: string, targetLengthMinutes: number) => Promise<void>; // Added
-  onShowScriptModal: (idea: VideoIdea) => void; // Added
+  // Script generation props restored
+  onGenerateScriptAndInstructions: (ideaId: string, targetLengthMinutes: number) => Promise<void>;
+  onShowScriptModal: (idea: VideoIdea) => void; 
   isLoadingExpansionGlobal?: boolean;
 }
 
@@ -29,8 +31,8 @@ export const IdeaSection: React.FC<IdeaSectionProps> = ({
   onExpandIdea,
   onShowYouTubeValidation,
   onGenerateTitleSuggestions, 
-  onGenerateScriptAndInstructions, // Added
-  onShowScriptModal, // Added
+  onGenerateScriptAndInstructions, // Prop restored
+  onShowScriptModal, // Prop restored
   isLoadingExpansionGlobal
 }) => {
   const defaultOpen = status === IdeaStatus.NEW || status === IdeaStatus.PRIORITIZED || (ideas.length > 0 && (status === IdeaStatus.IN_PROGRESS));
@@ -62,8 +64,8 @@ export const IdeaSection: React.FC<IdeaSectionProps> = ({
               onExpandIdea={onExpandIdea}
               onShowYouTubeValidation={onShowYouTubeValidation} // Pass through
               onGenerateTitleSuggestions={onGenerateTitleSuggestions} 
-              onGenerateScriptAndInstructions={onGenerateScriptAndInstructions} // Added
-              onShowScriptModal={onShowScriptModal} // Added
+              onGenerateScriptAndInstructions={onGenerateScriptAndInstructions} // Prop restored
+              onShowScriptModal={onShowScriptModal} // Prop restored
               isLoadingExpansionGlobal={isLoadingExpansionGlobal}
             />
           ))}

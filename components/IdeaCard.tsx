@@ -16,6 +16,7 @@ interface IdeaCardProps {
   onExpandIdea: (ideaId: string) => Promise<void>;
   onShowYouTubeValidation: (ideaId: string, forceRefresh?: boolean) => void; 
   onGenerateTitleSuggestions: (ideaId: string) => Promise<void>; 
+  // Script generation props restored
   onGenerateScriptAndInstructions: (ideaId: string, targetLengthMinutes: number) => Promise<void>;
   onShowScriptModal: (idea: VideoIdea) => void;
   isLoadingExpansionGlobal?: boolean;
@@ -54,6 +55,7 @@ const IconBase: React.FC<{ children: React.ReactNode, className?: string }> = ({
   </svg>
 );
 
+// ScriptIcon restored
 const ScriptIcon = () => <IconBase><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0_12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></IconBase>;
 const ExpandIcon = () => <IconBase><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75v4.5m0-4.5h-4.5m4.5 0L15 9m5.25 11.25v-4.5m0 4.5h-4.5m4.5 0L15 15" /></IconBase>;
 const YouTubeIcon = () => <IconBase><path strokeLinecap="round" strokeLinejoin="round" d="M6.75 7.5l3 2.25-3 2.25v-4.5zm3.75 0l3 2.25-3 2.25v-4.5zm3.75 0l3 2.25-3 2.25v-4.5z M4.5 19.5h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15A2.25 2.25 0 002.25 6.75v10.5A2.25 2.25 0 004.5 19.5z" /></IconBase>;
@@ -86,7 +88,8 @@ const UntappedScoreBadge: React.FC<{ score?: UntappedScore, summary?: string }> 
   );
 };
 
-const scriptLengthOptions = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 15, 18, 20].map(min => ({
+// scriptLengthOptions restored for 1-20 minutes
+const scriptLengthOptions = Array.from({ length: 20 }, (_, i) => i + 1).map(min => ({
     value: min.toString(),
     label: `${min} min`
 }));
@@ -100,12 +103,14 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({
     onExpandIdea,
     onShowYouTubeValidation,
     onGenerateTitleSuggestions,
-    onGenerateScriptAndInstructions,
-    onShowScriptModal,
+    onGenerateScriptAndInstructions, // Prop restored
+    onShowScriptModal, // Prop restored
     isLoadingExpansionGlobal
 }) => {
   
-  const [targetScriptLength, setTargetScriptLength] = useState<number>(idea.scriptLengthMinutes || 5); // Default to 5 min or stored
+  // targetScriptLength restored
+  const [targetScriptLength, setTargetScriptLength] = useState<number>(idea.scriptLengthMinutes || 5);
+  // isGeneratingScriptForThisCard restored
   const [isGeneratingScriptForThisCard, setIsGeneratingScriptForThisCard] = useState(false);
   const [isExpandingForThisCard, setIsExpandingForThisCard] = useState(false);
   const [isResearchingKeywordsForThisCard, setIsResearchingKeywordsForThisCard] = useState(false);
@@ -131,6 +136,7 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({
     setIsOptimizingTitleForThisCard(false);
   };
 
+  // handleGenerateScriptClick restored
   const handleGenerateScriptClick = async () => {
     setIsGeneratingScriptForThisCard(true);
     await onGenerateScriptAndInstructions(idea.id, targetScriptLength);
@@ -149,7 +155,8 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({
   const isPrioritized = idea.status === IdeaStatus.PRIORITIZED; 
   
   const isAnyActionLoading = idea.isScriptLoading || idea.isExpanding || idea.isKeywordsLoading || idea.isTitleOptimizing ||
-                             isGeneratingScriptForThisCard || isExpandingForThisCard || isResearchingKeywordsForThisCard || isOptimizingTitleForThisCard ||
+                             isGeneratingScriptForThisCard || // Restored
+                             isExpandingForThisCard || isResearchingKeywordsForThisCard || isOptimizingTitleForThisCard ||
                              !!isLoadingExpansionGlobal || idea.isYouTubeLoading;
   
   const detailTextColor = "text-[var(--text-secondary)]";
@@ -271,13 +278,12 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({
       
       {isPrioritized && (
         <CollapsibleSection
-          title="Script Generation & Content Plan"
+          title="Content Plan Actions" 
           defaultOpen={true}
           headerClassName="!text-base !font-semibold !py-3.5 !px-4 !bg-opacity-70"
           contentClassName="!pt-4 !pb-4 !px-4 !bg-opacity-50"
           className="!border-opacity-60 !rounded-lg mt-3"
         >
-            {/* Consistent spacing for all direct children of this div */}
             <div className="space-y-3.5">
                 <Button 
                     variant="secondary"
@@ -313,47 +319,44 @@ export const IdeaCard: React.FC<IdeaCardProps> = ({
                     <KeywordIcon /> Research Keywords
                 </Button>
 
-                {/* Script length and generation block - always visible if prioritized */}
-                <div className="space-y-2"> {/* Tighter spacing for this specific block */}
-                    <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2 items-end">
-                        <Select
-                            label="Target Video Length"
-                            id={`scriptLength-${idea.id}`}
-                            options={scriptLengthOptions}
-                            value={targetScriptLength.toString()}
-                            onChange={(e) => setTargetScriptLength(parseInt(e.target.value))}
-                            className="!text-sm !py-2" // Adjusted padding for alignment
-                        />
-                        <Button 
-                            variant="primary" 
-                            size="sm" 
-                            onClick={handleGenerateScriptClick}
-                            isLoading={isGeneratingScriptForThisCard || idea.isScriptLoading}
-                            disabled={isAnyActionLoading}
-                            className="w-full sm:w-auto !font-medium !tracking-wide !py-2.5" // Matches select height better
-                        >
-                            <ScriptIcon /> Generate Script
-                        </Button>
-                    </div>
-                    {/* Informational text for missing AI competitive angle */}
-                    {!idea.aiCompetitiveAngle && (
-                        <p className="text-xs text-center text-yellow-400/80 font-light">
-                            Consider validating on YouTube first for an AI competitive angle to enhance script uniqueness.
-                        </p>
-                    )}
+                {/* Script length and generation block RESTORED */}
+                <div className="grid grid-cols-3 gap-x-2 items-end">
+                  <Select
+                    label="Target Video Length"
+                    id={`scriptLength-${idea.id}`}
+                    options={scriptLengthOptions}
+                    value={targetScriptLength.toString()}
+                    onChange={(e) => setTargetScriptLength(parseInt(e.target.value))}
+                    className="!text-sm !py-2 !bg-opacity-70 col-span-1"
+                    disabled={isAnyActionLoading}
+                  />
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={handleGenerateScriptClick}
+                    isLoading={isGeneratingScriptForThisCard || idea.isScriptLoading}
+                    disabled={isAnyActionLoading}
+                    className="w-full !font-medium !tracking-wide col-span-2 !bg-teal-600/30 hover:!bg-teal-500/40 !border-teal-500/60 hover:!border-teal-400 !text-teal-200 hover:!text-teal-100"
+                  >
+                    <ScriptIcon /> Generate Script
+                  </Button>
                 </div>
+                {/* Informational text for missing AI competitive angle RESTORED */}
+                { !idea.aiCompetitiveAngle && (idea.script === undefined || idea.script === "") && (
+                   <p className="text-xs text-yellow-300/80 -mt-2 text-center">Consider validating on YouTube first for an AI competitive angle to enhance script uniqueness.</p>
+                )}
 
-                {/* View Full Content Plan button, conditional on script existence */}
-                {(idea.script || idea.videoInstructions || idea.suggestedResources) && (
-                    <Button 
-                        variant="primary" 
-                        size="sm" 
-                        onClick={() => onShowScriptModal(idea)}
-                        disabled={isAnyActionLoading && !(isGeneratingScriptForThisCard || idea.isScriptLoading)}
-                        className="w-full !font-medium !tracking-wide"
-                    >
-                       <ScriptIcon /> View Full Content Plan
-                    </Button>
+                {/* View Full Content Plan button RESTORED */}
+                {idea.script && (
+                  <Button 
+                    variant="primary" 
+                    size="sm" 
+                    onClick={() => onShowScriptModal(idea)} 
+                    className="w-full !font-medium !tracking-wide !bg-sky-600/80 hover:!bg-sky-500/90"
+                    disabled={isAnyActionLoading}
+                  >
+                    View Full Content Plan
+                  </Button>
                 )}
                 
                  <Button 
